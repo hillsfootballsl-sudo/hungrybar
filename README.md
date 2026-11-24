@@ -16,71 +16,84 @@ One system for **Hungry Bar, Hill Food Square, Dehiwala**:
 
 ## What's inside
 
-### Customer side
-- **Live pizza builder.** Pick a size, a base (thick or thin), sauce scoops, cheese, meats and veggies. The pizza is drawn live and each scoop or portion drops onto it. The price updates with every tap, and the "Loaded-o-meter" shows how loaded the pizza is. Detroit Box pizzas are drawn as squares.
-- **Menu pizzas are editable too.** Tap "Customise" on any menu pizza and the builder opens with its recipe. Removing a topping shows "No Onion"; adding extras charges the per-size extra price.
-- **Menu with serving hours.** Paninis and juices are served 6am–10pm, pizzas 11am–midnight. Outside those hours customers can still schedule an order for later.
+### Customer website & app (mobile first, installable)
+- **Big-chain layout in Hungry Bar colours.**
+  - **Header:** menu drawer, logo, a **delivery/pickup + time selector**, the **Hungry Rewards** badge, and Sign Up.
+  - **Homepage:** a sliding banner carousel, "Explore Our Menu" category tiles, Hungry Deals, Our Favourites, bestsellers, a rewards band and an install-the-app band.
+- **Ordering starts with delivery or pickup.** Customers choose their area first (free around Dehiwala) or pickup, then "as soon as possible" or a scheduled time. Everything is open **4pm–midnight**. Outside those hours customers can still schedule.
+- **Menu page.**
+  - Search box, category tabs and filter chips (Veg / Non Veg / Bestsellers / Chicken / Beef / My Favourites).
+  - Product cards with photo, ♥ favourite, **Customise**, veg/non-veg mark, serves, **size and crust choices**, price and **Add To Cart**.
+  - A live **cart sidebar** on desktop and a "View cart" bar on phones.
+- **"Customise Your Style" popup.**
+  - Change the size and crust.
+  - Included toppings and extra toppings, each with a **None / Regular / Extra / Triple** stepper.
+  - A **live drawing of the pizza** that changes with every tap, next to the photo.
+  - Also covers **Build Your Own** and Detroit squares.
+- **Hungry Deals (combos).** Customers pick each item in the deal, and pricier picks show a small top-up. The deal price is never more than ordering separately.
+- **Cart.** Edit items, apply a coupon, **use points to claim free rewards**, and see delivery fees.
 - **Checkout.**
-  - Delivery is free around Dehiwala; other areas have a fee you set.
-  - Pickup and dine-in by table QR.
-  - Phone OTP login.
-  - "Pin my location" for riders.
-  - ASAP or a scheduled time.
-  - Cash on delivery or PayHere card / eZ Cash.
-  - Promo codes.
-- **Rewards.** Every 10th order gets a free 1-person pizza. Stamps are added automatically for web and POS orders that carry a phone number.
-- **Live order tracking** with a status timeline, a WhatsApp button, reorder, and an order history page.
-- **Mobile first.** App-style bottom bar on phones. It can be installed from the browser ("Add to Home screen").
+  - Sign in with a phone code.
+  - Saved addresses and "pin my exact location".
+  - Cash on delivery or pickup, or PayHere card / eZ Cash.
+- **Order tracking** with a live timeline, plus **push notifications** to the phone ("In the oven 🔥", "On the way 🛵").
+- **My account:** orders with reorder and track, points history and expiry, profile (birthday and anniversary can be set once), saved addresses, favourites.
+- **Hungry Rewards page:** how points work, perks and the rewards menu, with progress bars once signed in.
+- **Installable app (PWA).** "Install app" on Android, Add-to-Home-Screen steps on iPhone, an offline page, and app shortcuts.
+- **Info pages:** store info and delivery areas, help/FAQ (halal, allergens, contact), about, terms, privacy, and table QR ordering.
+
+### Hungry Rewards (points)
+- **Earning.** Customers earn **1 point per Rs. 10**. Points are credited when the order is **completed** and **expire after 6 months** (oldest spent first).
+- **Bonuses.**
+  - **100 bonus points** after the first order.
+  - **200 points a week before a birthday or anniversary**, valid for 30 days.
+- **Rewards menu**, edited in admin:
+
+  | Reward | Points |
+  |---|---|
+  | Garlic bread | 150 |
+  | Mint mojito | 600 |
+  | Mini sub | 700 |
+  | Detroit margherita | 850 |
+  | 1-person margherita | 1,000 |
+  | 2-person margherita | 1,650 |
+
+- **Works at the counter too.** The POS looks the customer up by phone, shows their points and claims rewards.
+- **Cancelling** gives back the points that were spent and takes back the points that were earned.
+- A daily job (Vercel Cron) expires old points and drops birthday bonuses.
 
 ### POS (tablet)
-- **Quick ordering.** Tap a pizza's size to add it; tap the pizza picture to open the full builder. Covers takeaway, dine-in (table), delivery, **Uber** and **PickMe** (with a field for the platform's order ID).
-- **Customer and discounts.** Look up a customer by phone to see their stamps and redeem a free pizza. Promo codes work here too. Discounts by a cashier need a **manager PIN**.
-- **Payment.** Cash keypad with change calculation, or card (your existing card machine). "Pay later" sends a dine-in tab to the kitchen now and you settle it later.
-- **Online orders.** Web and QR orders ring the POS until accepted. Accepting prints the kitchen ticket.
-- **Shift and cash drawer.** Opening float, cash in and out, close with a counted amount, and a printed **Z report**. Cash over or short is flagged to the owner.
-- **Printing.**
-  - **Bluetooth printing** straight from Chrome on Android (BLE ESC/POS printers).
-  - For Bluetooth-Classic-only printers, use the **RawBT** app.
-  - A normal print dialog works for USB or Wi-Fi printers.
-  - Prints the logo, QR code, stamp card, and opens the cash drawer on cash sales.
+- **Taking orders.** Tap a size to add a pizza, tap the picture to customise, tap a **combo** to choose its items. Covers takeaway, dine-in (table), delivery, **Uber** and **PickMe**.
+- **Customers and points.** Look up the customer by phone to see their **points** and tap "Use points" to claim rewards. Points to be earned show on the ticket.
+- **Payments.** Cash keypad with change, card, and pay-later tabs. A manager PIN approves discounts and voids. Shifts track the cash drawer and print a Z report.
+- **Printing.** Bluetooth (Chrome on Android), the RawBT app, or the normal print dialog. Prints receipts with points, kitchen tickets, and opens the cash drawer.
 
 ### Kitchen display & rider app
-- **Kitchen display.** Columns are New → In the oven → Ready, each with a timer that turns amber, then red. Each ticket shows a mini picture of the pizza and highlights topping changes and notes. It beeps on new orders.
-- **Rider app.** Shows ready deliveries, a Google Maps link (to the pinned location if the customer set one), a call button, and "Delivered · collect Rs X".
+- **Kitchen display:** New → In the oven → Ready, with timers and combo items spelled out.
+- **Rider app:** maps link, call button, collect cash, mark delivered.
 
 ### Back-office (admin)
-- **Dashboard.** Today's sales, profit and margin, a 14-day sales chart, where today's money goes, low stock, unpaid tabs and best sellers.
-- **Stock is automatic.** Every sale deducts the exact recipe from stock:
-  - **Pizzas:** dough by size and base, grams per topping portion by size, and the box.
-  - **Other items:** each item's own recipe, including cups, wraps and trays.
-  - **Bags:** one carry bag per takeaway or delivery order.
-
-  Cancelling an order returns the stock. Each ingredient shows average daily use, **days left**, a **reorder suggestion** and how many pizzas the dough left can make. Low stock creates a notification and can also send an SMS to the owner.
-- **Stock adjustments.** Physical count, add stock, and **wastage** (with its value), plus a full movement log.
-- **Purchases and suppliers.** Recording a purchase adds stock and updates the cost price by weighted average, so food cost stays accurate. Each supplier has a delivery lead time, which feeds the reorder suggestions.
-- **Sectors and money.** Every bill is split automatically:
-
-  | Sector | How it's calculated |
-  |---|---|
-  | Food cost | Real recipe cost |
-  | Packaging | Boxes, bags, cups, wraps, trays |
-  | Royalty | Rs 100 / 150 / 200 per pizza by size |
-  | Charity | Rs 50 / 75 / 100 per pizza by size |
-  | Delivery fees | What the customer paid for delivery |
-  | Uber / PickMe fee | The platform's commission % |
-  | Profit | Whatever remains |
-
-  You get per-day "set aside" amounts, a stacked chart, and **all-time balances per sector** (collected minus paid out). For example, record "Royalty transferred Rs 15,000" and the royalty balance drops by that much.
-- **Menu.** Products, sizes and prices, recipes with a **live cost and profit per size**, add-ons (e.g. a cheese slice), categories with serving hours, and featured items.
-- **Pizza builder settings.** Sizes (dough grams, base price, royalty, charity, box), bases, and a toppings grid with grams and price per portion for each size.
+- **Dashboard:** sales, profit, where today's money goes, low stock, best sellers.
+- **Automatic stock.** Every sale deducts exact recipe grams: dough, every topping portion by size, boxes, cups, wraps, bags. **Combos and free reward items deduct stock too.**
+- **Sectors & money:** food cost, packaging, royalty, charity, delivery fees, Uber/PickMe fee and profit, per day and as running balances, with payouts.
+- **Menu.**
+  - Products, sizes, prices, recipes with live cost and profit.
+  - **Combo editor** (choices, options, top-ups).
+  - **Photo upload** for each item and category tile. Photos are resized and compressed automatically, and the drawing is used until a photo is added.
+  - Serving hours and the veg flag.
 - **Other pages.**
-  - Customers and stamps
+  - Pizza builder grams and prices per size
+  - Purchases with weighted-average costing
+  - Suppliers
+  - Wastage
+  - **Homepage banners**
+  - **Customers & rewards** (rewards menu, add or remove points with a reason)
   - Promo codes
-  - Delivery areas and fees
-  - **Printable table QR cards**
-  - Staff with role-based PINs, and shift history with cash over/short
-  - **Receipt designer** with a live 80mm preview and test print
-  - Settings: shop details, hours, auto-accept, Uber/PickMe commission %, rewards
+  - Delivery areas
+  - Printable table QR codes
+  - Staff PINs and shifts
+  - **Receipt designer**
+  - Settings (hours, ordering, points rules)
 
 ---
 
@@ -95,9 +108,13 @@ The menu and prices come from **Menu Board 3**. These are **placeholders** — e
 | Dough | Sizes | 180 / 270 / 320 g (yours). Detroit 200 g (guess) |
 | Ingredient costs & opening stock | Admin → Stock | All guesses — **do a full stock count first** |
 | Fresh juice & mojito names/prices | Admin → Menu | Guesses (e.g. Watermelon 450, Mojito 590) |
+| Mini sub & sandwich recipes | Admin → Menu → each item | 70g meat, 15g sauce, 20g mayo per 8" sub; sub roll Rs 70 |
+| Combo deals & top-ups | Admin → Menu → Hungry Deals | Suggested: Solo Hungry 1,490 · Couple's 2,750 · Family Feast 4,790 · Sub Squad 1,690 · Detroit Duo 2,590 |
+| Rewards menu & bonuses | Admin → Customers & rewards / Settings | 150–1,650 pts; welcome 100; birthday 200 |
 | Veg topping extra prices | Pizza builder | Rs 80 (peppers/capsicum), Rs 60 (onion) on 1P |
 | Custom-pizza base price | Sizes | Set so base + 1 sauce + 1 cheese = your Margherita price |
 | Detroit royalty/charity | Sizes | Rs 100 / 50 |
+| Food photos | Admin → Menu → each item → Upload photo | The site shows drawn art until you add photos |
 | Delivery areas outside Dehiwala | Delivery & tables | Rs 200–400 |
 | Uber / PickMe commission | Settings | 30% / 25% |
 | Staff PINs | Staff | **Owner 1234, Cashier 1111, Kitchen 2222, Rider 3333 — change them!** |
@@ -131,15 +148,17 @@ While `SMS_PROVIDER="console"`, OTP codes are shown on screen. Real SMS is sent 
    - Then seed once from your computer: `DATABASE_URL=… DIRECT_URL=… npm run db:seed`.
 3. **Domain:** renew **hungrybar.lk** with your registrar and add it in Vercel → Domains, following Vercel's DNS records. Set `NEXT_PUBLIC_SITE_URL=https://hungrybar.lk`.
 4. **SMS OTP:** create a [notify.lk](https://notify.lk) or [text.lk](https://text.lk) account. Request a sender ID (e.g. `HungryBar`), set `SMS_PROVIDER` and its keys, and add credit. Each OTP is one SMS.
-5. **PayHere:** create a merchant account and add `hungrybar.lk` as an approved domain. Test with `PAYHERE_SANDBOX="true"`, then switch to `"false"`.
-6. **Tablet POS:** use an Android tablet with **Chrome**.
+5. **Order notifications:** generate keys once with `npx web-push generate-vapid-keys` and set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` (e.g. `mailto:you@example.com`).
+6. **Daily points job:** set `CRON_SECRET` to a long random string. `vercel.json` already schedules `/api/cron/daily` every night, which expires old points and gives birthday bonuses.
+7. **PayHere:** create a merchant account and add `hungrybar.lk` as an approved domain. Test with `PAYHERE_SANDBOX="true"`, then switch to `"false"`.
+8. **Tablet POS:** use an Android tablet with **Chrome**.
    - Open `https://hungrybar.lk/pos`, then ⋮ → **Add to Home screen**, so it opens full-screen like an app.
    - Turn the 80mm printer on and tap 🖨️ **Connect printer**.
    - If your printer doesn't show up, it's Bluetooth-Classic-only. Install **RawBT** from the Play Store, pair the printer in RawBT, and choose "RawBT app" in the POS printer menu.
    - Most 80mm printers with an RJ11 cash-drawer port will pop the drawer on cash sales.
-7. **Kitchen screen:** any phone, tablet or smart TV browser → `/kitchen`, logged in with the Kitchen PIN.
-8. **Table QR codes:** Admin → Delivery & tables → **Print QR cards**, then stick them on the tables.
-9. **Change all PINs**, do a stock count (Stock → Adjust → Physical count), and check the placeholder numbers above.
+9. **Kitchen screen:** any phone, tablet or smart TV browser → `/kitchen`, logged in with the Kitchen PIN.
+10. **Table QR codes:** Admin → Delivery & tables → **Print QR cards**, then stick them on the tables.
+11. **Change all PINs**, do a stock count (Stock → Adjust → Physical count), and check the placeholder numbers above.
 
 **Monthly cost estimate:** Vercel Hobby and Supabase Free are $0 at the start. Once you grow, Vercel Pro is $20 and Supabase Pro is $25. Add SMS credit and PayHere's per-transaction fee.
 
