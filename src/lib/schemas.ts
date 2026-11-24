@@ -1,8 +1,19 @@
 import { z } from "zod";
 
+const pickSchema = z.object({
+  slotId: z.string().max(40),
+  productId: z.string().max(40),
+  sizeId: z.string().max(40).optional(),
+  variantId: z.string().max(40).optional(),
+  crustId: z.string().max(40).optional(),
+  toppings: z.record(z.string(), z.number().int().min(0).max(10)).optional(),
+});
+
 export const cartLineSchema = z.object({
-  key: z.string().max(400),
-  kind: z.enum(["PIZZA", "ITEM"]),
+  key: z.string().max(600),
+  kind: z.enum(["PIZZA", "ITEM", "COMBO"]),
+  picks: z.array(pickSchema).max(20).optional(),
+  rewardId: z.string().max(40).optional(),
   productId: z.string().max(40).optional(),
   variantId: z.string().max(40).optional(),
   sizeId: z.string().max(40).optional(),

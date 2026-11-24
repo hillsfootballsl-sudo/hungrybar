@@ -17,7 +17,6 @@ export const POST = handle(async (req: Request) => {
       zoneId: z.string().nullish(),
       customerPhone: z.string().nullish(),
       promoCode: z.string().max(30).nullish(),
-      redeemLoyalty: z.boolean().optional(),
       manualDiscount: z.number().min(0).nullish(),
     })
     .parse(await req.json());
@@ -31,9 +30,8 @@ export const POST = handle(async (req: Request) => {
     zoneId: b.type === "DELIVERY" && !platform ? b.zoneId || null : null,
     customerId: c?.id,
     promoCode: b.promoCode,
-    redeemLoyalty: b.redeemLoyalty,
     manualDiscount: b.manualDiscount ? { amount: b.manualDiscount } : null,
   }).catch((e) => ({ error: (e as Error).message }));
   if ("error" in q) return ok({ error: q.error });
-  return ok({ subtotal: q.subtotal, promoDiscount: q.promoDiscount, promoError: q.promoError, loyaltyAvailable: q.loyaltyAvailable, loyaltyDiscount: q.loyaltyDiscount, manualDiscount: q.manualDiscount, discount: q.discount, deliveryFee: q.deliveryFee, total: q.total });
+  return ok({ subtotal: q.subtotal, promoDiscount: q.promoDiscount, promoError: q.promoError, manualDiscount: q.manualDiscount, discount: q.discount, deliveryFee: q.deliveryFee, total: q.total, pointsNeeded: q.pointsNeeded, pointsBalance: q.pointsBalance, pointsEarnable: q.pointsEarnable });
 });

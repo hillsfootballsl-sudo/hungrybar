@@ -13,16 +13,21 @@ export interface CostCtx {
   toppings: Map<string, { ingredientId: string | null; sizes: Map<string, number> }>;
   variants: Map<string, { productId: string; sizeId: string | null; royalty: number; charity: number; recipe: { ingredientId: string; quantity: number }[] }>;
   addons: Map<string, { ingredientId: string | null; quantity: number }>;
+  products: Map<string, { kind: string; toppings: Record<string, number>; variants: { id: string; sizeId: string | null }[] }>;
+  rewards: Map<string, { productId: string; variantId: string | null }>;
+  defaultCrust?: string | null;
 }
 
 export async function loadCostCtx(tx: Tx = db): Promise<CostCtx> {
-  const [ings, sizes, crusts, toppings, variants, addons] = await Promise.all([
+  const [ings, sizes, crusts, toppings, variants, addons, products, rewards] = await Promise.all([
     tx.ingredient.findMany(),
     tx.pizzaSize.findMany(),
     tx.crust.findMany({ orderBy: { sortOrder: "asc" } }),
     tx.topping.findMany({ include: { sizes: true } }),
     tx.productVariant.findMany({ include: { recipe: true } }),
     tx.addon.findMany(),
+    tx.product.findMany({ select: { id: true, kind: true, toppings: true, variants: { select: { id: true, sizeId: true }, orderBy: { sortOrder: "asc" } } } }),
+    tx.rewardItem.findMany({ select: { id: true, productId: true, variantId: true } }),
   ]);
   return {
     ingredients: new Map(ings.map((i) => [i.id, { id: i.id, name: i.name, unit: i.unit, cost: i.costPerUnit, isPackaging: i.isPackaging }])),
@@ -37,6 +42,8 @@ export async function loadCostCtx(tx: Tx = db): Promise<CostCtx> {
       ]),
     ),
     addons: new Map(addons.map((a) => [a.id, { ingredientId: a.ingredientId, quantity: a.quantity }])),
+    products: new Map(products.map((p) => [p.id, { kind: p.kind, toppings: Object.fromEntries(p.toppings.map((t) => [t.toppingId, t.portions])), variants: p.variants }])),
+    rewards: new Map(rewards.map((r) => [r.id, { productId: r.productId, variantId: r.variantId }])),
   };
 }
 
@@ -55,11 +62,43 @@ export interface LineCost {
   charity: number;
 }
 
-export function costLine(ctx: CostCtx, line: CartLine): LineCost {
+/** Turn a reward line into the plain item it stands for */
+function resolveReward(ctx: CostCtx, line: CartLine): CartLine {
+  const r = line.rewardId ? ctx.rewards.get(line.rewardId) : undefined;
+  if (!r) return line;
+  const p = ctx.products.get(r.productId);
+  const v = p?.variants.find((x) => x.id === r.variantId) ?? p?.variants[0];
+  if (p?.kind === "PIZZA") return { ...line, rewardId: undefined, kind: "PIZZA", productId: r.productId, sizeId: v?.sizeId ?? undefined, crustId: ctx.defaultCrustId ?? undefined, toppings: p.toppings };
+  return { ...line, rewardId: undefined, kind: "ITEM", productId: r.productId, variantId: v?.id };
+}
+
+export function costLine(ctx: CostCtx, input: CartLine): LineCost {
+  const line = resolveReward(ctx, input);
   const qty = Math.max(1, Math.floor(line.quantity || 1));
   const one: Usage = {};
   let royalty = 0;
   let charity = 0;
+
+  if (line.kind === "COMBO") {
+    // cost every pick as a single item, then multiply by the combo quantity
+    let food = 0, pack = 0, roy = 0, ch = 0;
+    const usage: Usage = {};
+    for (const pick of line.picks ?? []) {
+      const p = ctx.products.get(pick.productId);
+      const sub: CartLine =
+        p?.kind === "PIZZA"
+          ? { key: "p", kind: "PIZZA", productId: pick.productId, sizeId: pick.sizeId, crustId: pick.crustId, toppings: pick.toppings ?? p.toppings, quantity: qty }
+          : { key: "p", kind: "ITEM", productId: pick.productId, variantId: pick.variantId ?? p?.variants[0]?.id, quantity: qty };
+      const c = costLine(ctx, sub);
+      for (const [id, q] of Object.entries(c.usage)) addUsage(usage, id, q);
+      food += c.foodCost;
+      pack += c.packagingCost;
+      roy += c.royalty;
+      ch += c.charity;
+    }
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    return { usage, foodCost: r2(food), packagingCost: r2(pack), royalty: r2(roy), charity: r2(ch) };
+  }
 
   if (line.kind === "PIZZA") {
     const size = line.sizeId ? ctx.sizes.get(line.sizeId) : undefined;

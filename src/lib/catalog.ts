@@ -4,7 +4,7 @@ import type { Catalog } from "./types";
 /** Public catalog (no costs) — safe to send to the browser. */
 export async function loadCatalog(opts: { includeInactive?: boolean } = {}): Promise<Catalog> {
   const active = opts.includeInactive ? {} : { active: true };
-  const [sizes, crusts, toppings, categories, products, addons] = await Promise.all([
+  const [sizes, crusts, toppings, categories, products, addons, rewards] = await Promise.all([
     db.pizzaSize.findMany({ where: active, orderBy: { sortOrder: "asc" } }),
     db.crust.findMany({ where: active, orderBy: { sortOrder: "asc" } }),
     db.topping.findMany({ where: active, orderBy: [{ group: "asc" }, { sortOrder: "asc" }], include: { sizes: true } }),
@@ -12,9 +12,10 @@ export async function loadCatalog(opts: { includeInactive?: boolean } = {}): Pro
     db.product.findMany({
       where: { ...active, category: active },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      include: { variants: { where: active, orderBy: { sortOrder: "asc" } }, toppings: true },
+      include: { variants: { where: active, orderBy: { sortOrder: "asc" } }, toppings: true, comboSlots: { orderBy: { sortOrder: "asc" } } },
     }),
     db.addon.findMany({ where: active }),
+    db.rewardItem.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { points: "asc" }] }),
   ]);
   return {
     sizes: sizes.map((s) => ({
@@ -45,6 +46,8 @@ export async function loadCatalog(opts: { includeInactive?: boolean } = {}): Pro
       slug: c.slug,
       tagline: c.tagline,
       icon: c.icon,
+      image: c.imageId ? `/media/${c.imageId}` : null,
+      showOnHome: c.showOnHome,
       availableFrom: c.availableFrom,
       availableTo: c.availableTo,
     })),
@@ -59,11 +62,14 @@ export async function loadCatalog(opts: { includeInactive?: boolean } = {}): Pro
         kind: p.kind,
         art: p.art,
         image: p.image,
+        isVeg: p.isVeg,
+        slots: p.comboSlots.map((s) => ({ id: s.id, label: s.label, quantity: s.quantity, options: (s.options ?? []) as unknown as import("./types").ComboOption[] })),
         tags: p.tags,
         featured: p.featured,
         variants: p.variants.map((v) => ({ id: v.id, name: v.name, sizeId: v.sizeId, price: v.price })),
         toppings: Object.fromEntries(p.toppings.map((t) => [t.toppingId, t.portions])),
       })),
     addons: addons.map((a) => ({ id: a.id, name: a.name, price: a.price, categoryId: a.categoryId })),
+    rewards: rewards.map((r) => ({ id: r.id, name: r.name, description: r.description, points: r.points, productId: r.productId, variantId: r.variantId })),
   };
 }

@@ -28,6 +28,7 @@ export default {
         pop: { "0%": { transform: "scale(1)" }, "40%": { transform: "scale(1.18)" }, "100%": { transform: "scale(1)" } },
         marquee: { from: { transform: "translateX(0)" }, to: { transform: "translateX(-50%)" } },
         floaty: { "0%,100%": { transform: "translateY(0)" }, "50%": { transform: "translateY(-10px)" } },
+        sheetUp: { from: { transform: "translateY(24px)", opacity: "0" }, to: { transform: "translateY(0)", opacity: "1" } },
         steam: { "0%": { transform: "translateY(0) scaleX(1)", opacity: "0" }, "30%": { opacity: ".6" }, "100%": { transform: "translateY(-40px) scaleX(1.4)", opacity: "0" } },
       },
       animation: {

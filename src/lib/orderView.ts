@@ -6,7 +6,7 @@ export const orderInclude = {
   table: { select: { label: true } },
   staff: { select: { name: true } },
   rider: { select: { id: true, name: true } },
-  customer: { select: { stamps: true, name: true } },
+  customer: { select: { points: true, name: true } },
 } satisfies Prisma.OrderInclude;
 
 export type OrderFull = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
@@ -42,8 +42,9 @@ export function toTicket(o: OrderFull) {
     staff: o.staff?.name ?? null,
     rider: o.rider?.name ?? null,
     riderId: o.rider?.id ?? null,
-    stamps: o.customer?.stamps ?? null,
-    loyaltyRedeemed: o.loyaltyRedeemed,
+    pointsBalance: o.customer?.points ?? null,
+    pointsEarned: o.pointsEarned,
+    pointsRedeemed: o.pointsRedeemed,
     createdAt: o.createdAt.toISOString(),
     confirmedAt: o.confirmedAt?.toISOString() ?? null,
     readyAt: o.readyAt?.toISOString() ?? null,

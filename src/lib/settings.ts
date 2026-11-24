@@ -11,11 +11,13 @@ export interface ShopSettings {
   mapUrl: string;
   halal: boolean;
   since: string;
+  email: string;
 }
 
 export interface HoursSettings {
-  cafe: { open: string; close: string; label: string };
-  pizza: { open: string; close: string; label: string };
+  open: string; // "16:00"
+  close: string; // "24:00"
+  note: string;
 }
 
 export interface OrderSettings {
@@ -29,10 +31,17 @@ export interface OrderSettings {
   freeDeliveryNote: string;
 }
 
-export interface LoyaltySettings {
+export interface RewardsSettings {
   enabled: boolean;
-  stampsRequired: number;
-  rewardSizeId: string | null;
+  programName: string;
+  pointName: string;
+  rupeesPerPoint: number; // spend Rs X → earn 1 point
+  expiryMonths: number;
+  welcomeBonus: number; // after the first completed order
+  birthdayBonus: number;
+  anniversaryBonus: number;
+  bonusValidDays: number;
+  bonusDaysBefore: number;
 }
 
 export interface ReceiptTemplate {
@@ -46,7 +55,7 @@ export interface ReceiptTemplate {
   showCustomer: boolean;
   showCashier: boolean;
   showModifiers: boolean;
-  showLoyalty: boolean;
+  showPoints: boolean;
   showQr: boolean;
   qrText: string;
   footerLines: string[];
@@ -68,11 +77,9 @@ export const DEFAULTS = {
     mapUrl: "https://maps.google.com/?q=Hill+Food+Square+Dehiwala",
     halal: true,
     since: "2021",
+    email: "",
   } as ShopSettings,
-  hours: {
-    cafe: { open: "06:00", close: "22:00", label: "Breakfast · Lunch · Dinner — paninis & fresh juices" },
-    pizza: { open: "11:00", close: "24:00", label: "Pizza oven" },
-  } as HoursSettings,
+  hours: { open: "16:00", close: "24:00", note: "Open daily, 4pm till midnight" } as HoursSettings,
   orders: {
     acceptingOnline: true,
     autoAcceptWeb: false,
@@ -83,7 +90,18 @@ export const DEFAULTS = {
     prepMinutes: 20,
     freeDeliveryNote: "Free delivery around Dehiwala",
   } as OrderSettings,
-  loyalty: { enabled: true, stampsRequired: 10, rewardSizeId: null } as LoyaltySettings,
+  rewards: {
+    enabled: true,
+    programName: "Hungry Rewards",
+    pointName: "Hungry Points",
+    rupeesPerPoint: 10,
+    expiryMonths: 6,
+    welcomeBonus: 100,
+    birthdayBonus: 200,
+    anniversaryBonus: 200,
+    bonusValidDays: 30,
+    bonusDaysBefore: 7,
+  } as RewardsSettings,
   receipt: {
     paperWidth: 80,
     showLogo: true,
@@ -95,10 +113,10 @@ export const DEFAULTS = {
     showCustomer: true,
     showCashier: true,
     showModifiers: true,
-    showLoyalty: true,
+    showPoints: true,
     showQr: true,
     qrText: "https://hungrybar.lk",
-    footerLines: ["Thank you! Come hungry again :)", "Every 10th order = FREE pizza", "IG @hungrybar.sl"],
+    footerLines: ["Thank you! Come hungry again :)", "Earn Hungry Points on every order", "IG @hungrybar.sl"],
     largeTotal: true,
     printKot: true,
     autoPrint: true,
@@ -122,12 +140,12 @@ export async function setSetting<K extends SettingKey>(key: K, value: (typeof DE
 }
 
 export async function getAllSettings() {
-  const [shop, hours, orders, loyalty, receipt] = await Promise.all([
+  const [shop, hours, orders, rewards, receipt] = await Promise.all([
     getSetting("shop"),
     getSetting("hours"),
     getSetting("orders"),
-    getSetting("loyalty"),
+    getSetting("rewards"),
     getSetting("receipt"),
   ]);
-  return { shop, hours, orders, loyalty, receipt };
+  return { shop, hours, orders, rewards, receipt };
 }

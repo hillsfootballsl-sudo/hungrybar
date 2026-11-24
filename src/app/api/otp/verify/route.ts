@@ -22,5 +22,5 @@ export const POST = handle(async (req: Request) => {
   const customer = await db.customer.upsert({ where: { phone }, create: { phone }, update: {} });
   const token = await signToken({ cid: customer.id, phone }, 90);
   (await cookies()).set(CUSTOMER_COOKIE, token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 90 * 86400 });
-  return ok({ customer: { id: customer.id, phone: customer.phone, name: customer.name, stamps: customer.stamps, addresses: customer.addresses } });
+  return ok({ customer: { id: customer.id, phone: customer.phone, name: customer.name, points: customer.points, addresses: customer.addresses, isNew: !customer.name } });
 });

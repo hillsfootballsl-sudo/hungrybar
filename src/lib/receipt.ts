@@ -38,8 +38,9 @@ export interface PrintOrder {
   amountTendered?: number | null;
   changeGiven?: number | null;
   note?: string | null;
-  stamps?: number | null;
-  loyaltyRedeemed?: boolean;
+  pointsBalance?: number | null;
+  pointsEarned?: number;
+  pointsRedeemed?: number;
 }
 
 export const charsFor = (paper: number) => (paper === 58 ? 32 : 48);
@@ -62,7 +63,7 @@ function when(iso: string) {
   return new Date(iso).toLocaleString("en-GB", { timeZone: "Asia/Colombo", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
 }
 
-export function receiptOps(o: PrintOrder, tpl: ReceiptTemplate, shop: ShopSettings, opts: { stampsRequired?: number; openDrawer?: boolean } = {}): Op[] {
+export function receiptOps(o: PrintOrder, tpl: ReceiptTemplate, shop: ShopSettings, opts: { pointName?: string; openDrawer?: boolean } = {}): Op[] {
   const ops: Op[] = [];
   if (tpl.showLogo) ops.push({ t: "logo" });
   tpl.headerLines.forEach((l, i) => ops.push({ t: "text", text: ascii(l), align: "center", bold: i === 0, size: i === 0 ? 2 : 1 }));
@@ -104,13 +105,13 @@ export function receiptOps(o: PrintOrder, tpl: ReceiptTemplate, shop: ShopSettin
     ops.push({ t: "cols", left: "Cash received", right: amt(o.amountTendered) });
     ops.push({ t: "cols", left: "Change", right: amt(o.changeGiven ?? 0), bold: true });
   }
-  if (tpl.showLoyalty && o.stamps != null && opts.stampsRequired) {
+  if (tpl.showPoints && o.pointsBalance != null) {
+    const name = ascii(opts.pointName || "Hungry Points");
     ops.push({ t: "rule" });
-    const req = opts.stampsRequired;
-    const filled = Math.min(req - 1, o.stamps);
-    ops.push({ t: "text", text: o.loyaltyRedeemed ? "FREE PIZZA REDEEMED - ENJOY!" : "YOUR STAMP CARD", align: "center", bold: true });
-    ops.push({ t: "text", text: Array.from({ length: req }, (_, i) => (i === req - 1 ? "FREE" : i < filled ? "X" : "-")).join(" "), align: "center" });
-    ops.push({ t: "text", text: "(stamp added when order is completed)", align: "center" });
+    ops.push({ t: "text", text: name.toUpperCase(), align: "center", bold: true });
+    if (o.pointsRedeemed) ops.push({ t: "cols", left: "Points used", right: `-${o.pointsRedeemed}` });
+    if (o.pointsEarned) ops.push({ t: "cols", left: "Points you'll earn", right: `+${o.pointsEarned}` });
+    ops.push({ t: "cols", left: "Balance", right: `${o.pointsBalance}`, bold: true });
   }
   if (o.note) {
     ops.push({ t: "rule" });

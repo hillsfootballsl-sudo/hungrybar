@@ -39,6 +39,8 @@ export interface CatCategory {
   slug: string;
   tagline: string | null;
   icon: string | null;
+  image: string | null;
+  showOnHome: boolean;
   availableFrom: string;
   availableTo: string;
 }
@@ -50,15 +52,30 @@ export interface CatVariant {
   price: number;
 }
 
+export interface ComboOption {
+  productId: string;
+  sizeId?: string | null; // pizzas: which size
+  variantId?: string | null; // items: which variant
+  upcharge: number;
+}
+export interface CatComboSlot {
+  id: string;
+  label: string;
+  quantity: number;
+  options: ComboOption[];
+}
+
 export interface CatProduct {
   id: string;
   name: string;
   slug: string;
   description: string | null;
   categoryId: string;
-  kind: "PIZZA" | "ITEM";
+  kind: "PIZZA" | "ITEM" | "COMBO";
   art: string | null;
   image: string | null;
+  isVeg: boolean;
+  slots: CatComboSlot[];
   tags: string[];
   featured: boolean;
   variants: CatVariant[];
@@ -73,6 +90,15 @@ export interface CatAddon {
   categoryId: string;
 }
 
+export interface CatReward {
+  id: string;
+  name: string;
+  description: string | null;
+  points: number;
+  productId: string;
+  variantId: string | null;
+}
+
 export interface Catalog {
   sizes: CatSize[];
   crusts: CatCrust[];
@@ -80,12 +106,25 @@ export interface Catalog {
   categories: CatCategory[];
   products: CatProduct[];
   addons: CatAddon[];
+  rewards: CatReward[];
+}
+
+/** One chosen item inside a combo */
+export interface ComboPick {
+  slotId: string;
+  productId: string;
+  sizeId?: string;
+  variantId?: string;
+  crustId?: string;
+  toppings?: Record<string, number>;
 }
 
 /** A line in the cart / POS ticket. Prices are always recomputed from the catalog. */
 export interface CartLine {
   key: string;
-  kind: "PIZZA" | "ITEM";
+  kind: "PIZZA" | "ITEM" | "COMBO";
+  picks?: ComboPick[]; // COMBO only
+  rewardId?: string; // claimed with points: price 0
   productId?: string; // undefined => fully custom pizza
   variantId?: string; // for ITEM (and resolved for preset pizzas)
   sizeId?: string;
@@ -103,7 +142,8 @@ export interface PricedLine {
   crustName?: string;
   unitPrice: number;
   lineTotal: number;
-  basePrice: number; // price before extras (used for loyalty reward)
+  basePrice: number; // price before extras
+  points: number; // points needed (reward lines)
   summary: string; // "+ Chicken · No Onion"
   valid: boolean;
   error?: string;

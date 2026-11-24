@@ -2,11 +2,12 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Hungry Bar — Fresh, Hot, Hand-tossed Halal Pizza · Dehiwala", template: "%s · Hungry Bar" },
+  title: { default: "Hungry Bar — Pizza, Subs & Fresh Juices · Dehiwala", template: "%s · Hungry Bar" },
   description:
-    "Build your own pizza and watch it come alive. 100% halal, hand-tossed pizzas, Detroit squares, paninis, fresh juices & mojitos at Hill Food Square, Dehiwala. Order online for delivery or pickup.",
+    "Order 100% halal, hand-tossed pizzas, Detroit squares, mini subs, sandwiches, fresh juices & mojitos from Hungry Bar, Hill Food Square, Dehiwala. Open 4pm–midnight. Earn Hungry Points on every order.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://hungrybar.lk"),
-  icons: { icon: "/brand/logo.png", apple: "/brand/logo.png" },
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "Hungry Bar", statusBarStyle: "default" },
   manifest: "/manifest.webmanifest",
   openGraph: { images: ["/brand/logo.png"], siteName: "Hungry Bar", locale: "en_LK", type: "website" },
 };

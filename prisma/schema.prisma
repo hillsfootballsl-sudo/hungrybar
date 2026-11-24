@@ -30,6 +30,17 @@ enum ToppingGroup {
 enum ProductKind {
   PIZZA
   ITEM
+  COMBO
+}
+
+enum PointsReason {
+  EARN
+  REDEEM
+  WELCOME
+  BIRTHDAY
+  ADJUST
+  EXPIRE
+  REVERSAL
 }
 
 enum OrderType {
@@ -104,19 +115,19 @@ model Setting {
 // ───────────────────────── Inventory ─────────────────────────
 
 model Ingredient {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  unit        String   @default("g") // g, ml, pcs
-  category    String   @default("OTHER") // DOUGH, SAUCE, CHEESE, MEAT, VEG, FRUIT, BAKERY, BEVERAGE, PACKAGING, OTHER
-  stock       Float    @default(0)
-  lowStock    Float    @default(0)
-  costPerUnit Float    @default(0) // LKR per unit
-  isPackaging Boolean  @default(false)
-  active      Boolean  @default(true)
+  id          String    @id @default(cuid())
+  name        String    @unique
+  unit        String    @default("g") // g, ml, pcs
+  category    String    @default("OTHER") // DOUGH, SAUCE, CHEESE, MEAT, VEG, FRUIT, BAKERY, BEVERAGE, PACKAGING, OTHER
+  stock       Float     @default(0)
+  lowStock    Float     @default(0)
+  costPerUnit Float     @default(0) // LKR per unit
+  isPackaging Boolean   @default(false)
+  active      Boolean   @default(true)
   supplierId  String?
   supplier    Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   movements     StockMovement[]
   toppings      Topping[]
@@ -185,34 +196,34 @@ model PurchaseItem {
 // ───────────────────────── Pizza builder ─────────────────────────
 
 model PizzaSize {
-  id             String        @id @default(cuid())
-  name           String // "1 Person"
-  short          String // "1P"
-  persons        Int           @default(1)
-  shape          String        @default("ROUND") // ROUND | RECT (Detroit)
-  doughGrams     Float
-  basePrice      Float         @default(0) // price of a plain base in the custom builder
-  royalty        Float         @default(0) // LKR per pizza
-  charity        Float         @default(0) // LKR per pizza
-  inBuilder      Boolean       @default(true)
-  boxId          String?
-  box            Ingredient?   @relation(fields: [boxId], references: [id], onDelete: SetNull)
-  sortOrder      Int           @default(0)
-  active         Boolean       @default(true)
-  toppingSizes   ToppingSize[]
-  variants       ProductVariant[]
+  id           String           @id @default(cuid())
+  name         String // "1 Person"
+  short        String // "1P"
+  persons      Int              @default(1)
+  shape        String           @default("ROUND") // ROUND | RECT (Detroit)
+  doughGrams   Float
+  basePrice    Float            @default(0) // price of a plain base in the custom builder
+  royalty      Float            @default(0) // LKR per pizza
+  charity      Float            @default(0) // LKR per pizza
+  inBuilder    Boolean          @default(true)
+  boxId        String?
+  box          Ingredient?      @relation(fields: [boxId], references: [id], onDelete: SetNull)
+  sortOrder    Int              @default(0)
+  active       Boolean          @default(true)
+  toppingSizes ToppingSize[]
+  variants     ProductVariant[]
 }
 
 model Crust {
-  id          String     @id @default(cuid())
+  id          String      @id @default(cuid())
   name        String
   description String?
-  extraPrice  Float      @default(0)
-  doughFactor Float      @default(1) // multiplier on size dough grams
+  extraPrice  Float       @default(0)
+  doughFactor Float       @default(1) // multiplier on size dough grams
   doughId     String?
   dough       Ingredient? @relation(fields: [doughId], references: [id], onDelete: SetNull)
-  sortOrder   Int        @default(0)
-  active      Boolean    @default(true)
+  sortOrder   Int         @default(0)
+  active      Boolean     @default(true)
 }
 
 model Topping {
@@ -250,6 +261,8 @@ model Category {
   slug          String    @unique
   tagline       String?
   icon          String? // art key
+  imageId       String?
+  showOnHome    Boolean   @default(true)
   availableFrom String    @default("00:00") // HH:mm Asia/Colombo
   availableTo   String    @default("24:00")
   sortOrder     Int       @default(0)
@@ -267,7 +280,8 @@ model Product {
   category    Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   kind        ProductKind      @default(ITEM)
   art         String? // illustration key for non-pizza items, e.g. "juice:#F25C54"
-  image       String? // optional photo URL
+  image       String? // photo URL, e.g. /media/<id>
+  isVeg       Boolean          @default(false)
   tags        String[]         @default([])
   featured    Boolean          @default(false)
   active      Boolean          @default(true)
@@ -275,6 +289,34 @@ model Product {
   createdAt   DateTime         @default(now())
   variants    ProductVariant[]
   toppings    ProductTopping[]
+  comboSlots  ComboSlot[]
+  rewards     RewardItem[]
+}
+
+// A choice inside a combo deal, e.g. "Your 2-person pizza" or "2 mojitos"
+model ComboSlot {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label     String
+  quantity  Int     @default(1)
+  sortOrder Int     @default(0)
+  // [{ productId, sizeId?, variantId?, upcharge }]
+  options   Json    @default("[]")
+}
+
+// Rewards menu: items customers can claim with points
+model RewardItem {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  points      Int
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId   String? // which size/variant is free
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
 }
 
 model ProductVariant {
@@ -327,18 +369,73 @@ model Addon {
 // ───────────────────────── People ─────────────────────────
 
 model Customer {
-  id          String   @id @default(cuid())
-  phone       String   @unique // 94XXXXXXXXX
-  name        String?
-  email       String?
-  addresses   Json     @default("[]")
-  stamps      Int      @default(0)
-  rewardsUsed Int      @default(0)
-  totalOrders Int      @default(0)
-  totalSpent  Float    @default(0)
-  notes       String?
-  createdAt   DateTime @default(now())
-  orders      Order[]
+  id                    String             @id @default(cuid())
+  phone                 String             @unique // 94XXXXXXXXX
+  name                  String?
+  email                 String?
+  addresses             Json               @default("[]")
+  birthday              String? // MM-DD
+  anniversary           String? // MM-DD
+  favourites            String[]           @default([])
+  points                Int                @default(0) // cached balance (sum of unexpired remaining)
+  lastBirthdayBonusYear Int?
+  marketingOk           Boolean            @default(true)
+  totalOrders           Int                @default(0)
+  totalSpent            Float              @default(0)
+  notes                 String?
+  createdAt             DateTime           @default(now())
+  orders                Order[]
+  pointsTxns            PointsTxn[]
+  pushSubs              PushSubscription[]
+}
+
+model PointsTxn {
+  id         String       @id @default(cuid())
+  customerId String
+  customer   Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  change     Int // + earned, - spent/expired
+  remaining  Int          @default(0) // for positive batches: points not yet used (FIFO)
+  reason     PointsReason
+  note       String?
+  orderId    String?
+  expiresAt  DateTime?
+  createdAt  DateTime     @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+model PushSubscription {
+  id         String    @id @default(cuid())
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  orderIds   String[]  @default([])
+  createdAt  DateTime  @default(now())
+}
+
+model Media {
+  id        String   @id @default(cuid())
+  mime      String
+  data      Bytes
+  width     Int
+  height    Int
+  alt       String?
+  createdAt DateTime @default(now())
+}
+
+model Banner {
+  id        String   @id @default(cuid())
+  title     String // big words on the slide
+  subtitle  String?
+  imageId   String?
+  link      String   @default("/menu")
+  cta       String   @default("Order now")
+  theme     String   @default("dark") // dark | red | cream
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 model OtpCode {
@@ -432,76 +529,77 @@ model Promo {
 }
 
 model Order {
-  id              String        @id @default(cuid())
-  number          Int           @default(autoincrement())
-  channel         OrderChannel
-  type            OrderType
-  status          OrderStatus   @default(PENDING)
-  customerId      String?
-  customer        Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  customerName    String?
-  customerPhone   String?
-  address         String?
-  landmark        String?
-  lat             Float?
-  lng             Float?
-  zoneId          String?
-  zone            DeliveryZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
-  tableId         String?
-  table           DiningTable?  @relation(fields: [tableId], references: [id], onDelete: SetNull)
-  scheduledFor    DateTime?
-  externalRef     String? // Uber / PickMe order id
+  id            String        @id @default(cuid())
+  number        Int           @default(autoincrement())
+  channel       OrderChannel
+  type          OrderType
+  status        OrderStatus   @default(PENDING)
+  customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName  String?
+  customerPhone String?
+  address       String?
+  landmark      String?
+  lat           Float?
+  lng           Float?
+  zoneId        String?
+  zone          DeliveryZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  tableId       String?
+  table         DiningTable?  @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  scheduledFor  DateTime?
+  externalRef   String? // Uber / PickMe order id
 
-  subtotal        Float         @default(0)
-  discount        Float         @default(0)
-  discountNote    String?
-  deliveryFee     Float         @default(0)
-  total           Float         @default(0)
-  promoCode       String?
-  loyaltyRedeemed Boolean       @default(false)
-  stampAwarded    Boolean       @default(false)
+  subtotal       Float   @default(0)
+  discount       Float   @default(0)
+  discountNote   String?
+  deliveryFee    Float   @default(0)
+  total          Float   @default(0)
+  promoCode      String?
+  pointsRedeemed Int     @default(0)
+  pointsEarned   Int     @default(0)
+  pointsAwarded  Boolean @default(false)
 
-  paymentMethod   PaymentMethod @default(CASH)
-  paymentStatus   PaymentStatus @default(UNPAID)
-  paymentRef      String?
-  paidAt          DateTime?
-  amountTendered  Float?
-  changeGiven     Float?
+  paymentMethod  PaymentMethod @default(CASH)
+  paymentStatus  PaymentStatus @default(UNPAID)
+  paymentRef     String?
+  paidAt         DateTime?
+  amountTendered Float?
+  changeGiven    Float?
 
   // Sector allocation (LKR)
-  foodCost        Float         @default(0)
-  packagingCost   Float         @default(0)
-  royalty         Float         @default(0)
-  charity         Float         @default(0)
-  platformFee     Float         @default(0)
-  profit          Float         @default(0)
+  foodCost      Float @default(0)
+  packagingCost Float @default(0)
+  royalty       Float @default(0)
+  charity       Float @default(0)
+  platformFee   Float @default(0)
+  profit        Float @default(0)
 
-  stockDeducted   Boolean       @default(false)
-  usage           Json          @default("{}") // ingredientId -> qty for the whole order (items + bags)
-  note            String?
-  staffId         String?
-  staff           Staff?        @relation("OrderStaff", fields: [staffId], references: [id], onDelete: SetNull)
-  riderId         String?
-  rider           Staff?        @relation("OrderRider", fields: [riderId], references: [id], onDelete: SetNull)
-  shiftId         String?
-  shift           Shift?        @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  stockDeducted Boolean @default(false)
+  usage         Json    @default("{}") // ingredientId -> qty for the whole order (items + bags)
+  note          String?
+  staffId       String?
+  staff         Staff?  @relation("OrderStaff", fields: [staffId], references: [id], onDelete: SetNull)
+  riderId       String?
+  rider         Staff?  @relation("OrderRider", fields: [riderId], references: [id], onDelete: SetNull)
+  shiftId       String?
+  shift         Shift?  @relation(fields: [shiftId], references: [id], onDelete: SetNull)
 
-  createdAt       DateTime      @default(now())
-  confirmedAt     DateTime?
-  readyAt         DateTime?
-  completedAt     DateTime?
-  cancelledAt     DateTime?
-  cancelReason    String?
-  items           OrderItem[]
+  createdAt    DateTime    @default(now())
+  confirmedAt  DateTime?
+  readyAt      DateTime?
+  completedAt  DateTime?
+  cancelledAt  DateTime?
+  cancelReason String?
+  items        OrderItem[]
 
   @@index([createdAt])
   @@index([status])
 }
 
 model OrderItem {
-  id            String       @id @default(cuid())
+  id            String      @id @default(cuid())
   orderId       String
-  order         Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order         Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
   kind          ProductKind
   productId     String?
   variantId     String?
@@ -514,11 +612,11 @@ model OrderItem {
   config        Json // full composition used for re-rendering & costing
   summary       String? // human readable modifications, e.g. "+ Chicken · No Onion"
   note          String?
-  foodCost      Float        @default(0)
-  packagingCost Float        @default(0)
-  royalty       Float        @default(0)
-  charity       Float        @default(0)
-  sortOrder     Int          @default(0)
+  foodCost      Float       @default(0)
+  packagingCost Float       @default(0)
+  royalty       Float       @default(0)
+  charity       Float       @default(0)
+  sortOrder     Int         @default(0)
 }
 
 model SectorEntry {

@@ -13,7 +13,7 @@ export function unavailableAt(cat: Catalog, lines: CartLine[], at: Date = new Da
   for (const l of lines) {
     if (!l.productId) {
       // custom pizza follows the pizza category hours
-      const pc = cat.categories.find((c) => c.icon === "pizza");
+      const pc = cat.categories.find((c) => c.icon === "pizza") ?? cat.categories[0];
       if (pc && !isOpenAt(pc.availableFrom, pc.availableTo, colomboParts(at).minutes)) out.push("Build Your Own Pizza");
       continue;
     }

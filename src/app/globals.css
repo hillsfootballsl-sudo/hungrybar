@@ -9,7 +9,7 @@
 }
 
 html { -webkit-tap-highlight-color: transparent; }
-body { @apply bg-cream-100 text-char-700 font-sans antialiased; }
+body { @apply bg-white text-char-700 font-sans antialiased; }
 
 /* subtle paper grain for the retro print feel */
 .grain { position: relative; }
@@ -33,18 +33,28 @@ body { @apply bg-cream-100 text-char-700 font-sans antialiased; }
 .sunburst { background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,.07) 0deg 8deg, transparent 8deg 16deg); }
 
 @layer components {
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-bold transition active:translate-x-[2px] active:translate-y-[2px] active:shadow-none disabled:opacity-50 disabled:pointer-events-none select-none; }
-  .btn-primary { @apply btn bg-tomato text-white border-2 border-char shadow-retro hover:bg-tomato-600; }
-  .btn-dark { @apply btn bg-char text-cream border-2 border-char shadow-retro-red hover:bg-char-600; }
-  .btn-ghost { @apply btn bg-white text-char border-2 border-char shadow-retro hover:bg-cream-200; }
-  .btn-sm { @apply px-3 py-2 text-sm rounded-lg; }
-  .card { @apply bg-white rounded-2xl border-2 border-char shadow-retro; }
-  .chip { @apply inline-flex items-center gap-1 rounded-full border-2 border-char px-3 py-1 text-xs font-bold uppercase tracking-wide; }
-  .input { @apply w-full rounded-xl border-2 border-char/80 bg-white px-4 py-3 text-base outline-none focus:border-tomato focus:ring-4 focus:ring-tomato/15 placeholder:text-char-300; }
-  .label { @apply mb-1 block text-xs font-bold uppercase tracking-wider text-char-500; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-bold transition active:scale-[.98] disabled:opacity-45 disabled:pointer-events-none select-none; }
+  .btn-primary { @apply btn bg-tomato text-white hover:bg-tomato-600; }
+  .btn-dark { @apply btn bg-char text-white hover:bg-char-600; }
+  .btn-ghost { @apply btn bg-white text-char border border-char-200 hover:border-char hover:bg-char-50; }
+  .btn-mustard { @apply btn bg-mustard text-char hover:brightness-95; }
+  .btn-sm { @apply px-3.5 py-2 text-sm; }
+  .card { @apply bg-white rounded-2xl border border-black/[.06] shadow-[0_2px_14px_rgba(38,38,38,.07)]; }
+  .chip { @apply inline-flex items-center gap-1.5 rounded-full border border-char-200 bg-white px-3 py-1 text-xs font-bold; }
+  .input { @apply w-full rounded-xl border border-char-200 bg-white px-4 py-3 text-base outline-none transition focus:border-char focus:ring-4 focus:ring-char/10 placeholder:text-char-300; }
+  .label { @apply mb-1.5 block text-xs font-bold uppercase tracking-wider text-char-400; }
   .h-display { @apply font-display uppercase leading-[.9] tracking-tight; }
   .h-cond { @apply font-condensed uppercase tracking-wide; }
+  .h-title { @apply font-sans text-2xl font-extrabold tracking-tight md:text-3xl; }
 }
+
+.doodles { background-color: #fff; background-image: url("/brand/doodles.svg"); background-size: 260px 260px; }
+.doodles-dark { background-color: #262626; background-image: url("/brand/doodles.svg"); background-size: 260px 260px; background-blend-mode: soft-light; }
+.veg-mark, .nonveg-mark { display: inline-grid; place-items: center; width: 18px; height: 18px; border: 2px solid; border-radius: 4px; }
+.veg-mark { border-color: #2E8B3A; } .veg-mark::after { content: ""; width: 8px; height: 8px; border-radius: 99px; background: #2E8B3A; }
+.nonveg-mark { border-color: #C0281A; } .nonveg-mark::after { content: ""; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid #C0281A; }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; } .scrollbar-thin::-webkit-scrollbar-thumb { background: #C9C9C9; border-radius: 99px; }
 
 /* Admin / staff surfaces: calmer */
 .staff { @apply bg-[#F6F3EE]; }

@@ -1,9 +1,10 @@
-// Server-only order engine: quote → create → status transitions, with stock + sector allocation + loyalty.
+// Server-only order engine: quote → create → status transitions, with stock, sector allocation and Hungry Points.
 import type { OrderStatus, Prisma } from "@prisma/client";
 import { db } from "./db";
 import { loadCatalog } from "./catalog";
 import { addUsage, costLine, loadCostCtx, type Usage } from "./costing";
-import { loyaltyRewardValue, priceLine, rewardAvailable, round2 } from "./pricing";
+import { balance, credit, debit, PointsError } from "./points";
+import { pointsFor, priceLine, round2 } from "./pricing";
 import { getSetting } from "./settings";
 import { sendSms } from "./sms";
 import type { CartLine, ChannelT, OrderTypeT, PaymentMethodT, PricedLine } from "./types";
@@ -19,7 +20,6 @@ export interface QuoteInput {
   customerId?: string | null;
   zoneId?: string | null;
   promoCode?: string | null;
-  redeemLoyalty?: boolean;
   manualDiscount?: { amount: number; note?: string } | null;
 }
 
@@ -29,13 +29,14 @@ export interface Quote {
   promoDiscount: number;
   promoError?: string;
   promoCode?: string;
-  loyaltyDiscount: number;
-  loyaltyAvailable: boolean;
   manualDiscount: number;
   discount: number;
   deliveryFee: number;
   total: number;
   discountNote: string;
+  pointsNeeded: number;
+  pointsBalance: number | null;
+  pointsEarnable: number;
 }
 
 export async function quoteOrder(input: QuoteInput): Promise<Quote> {
@@ -45,6 +46,17 @@ export async function quoteOrder(input: QuoteInput): Promise<Quote> {
   const invalid = priced.find((p) => !p.valid);
   if (invalid) throw new OrderError(invalid.error || "An item is unavailable");
   const subtotal = round2(priced.reduce((s, p) => s + p.lineTotal, 0));
+  const pointsNeeded = priced.reduce((s, p) => s + p.points, 0);
+  const rewards = await getSetting("rewards");
+
+  if (pointsNeeded > 0 && !input.customerId) throw new OrderError("Sign in to use your points");
+  if (pointsNeeded > 0 && priced.every((p) => p.points > 0)) throw new OrderError("Add at least one paid item to use a reward");
+
+  let pointsBalance: number | null = null;
+  if (input.customerId) {
+    pointsBalance = await balance(db, input.customerId);
+    if (pointsNeeded > pointsBalance) throw new OrderError(`You need ${pointsNeeded.toLocaleString()} points for these rewards but have ${pointsBalance.toLocaleString()}`);
+  }
 
   // Promo
   let promoDiscount = 0;
@@ -67,20 +79,8 @@ export async function quoteOrder(input: QuoteInput): Promise<Quote> {
     }
   }
 
-  // Loyalty
-  const loyalty = await getSetting("loyalty");
-  let loyaltyAvailable = false;
-  let loyaltyDiscount = 0;
-  if (input.customerId && loyalty.enabled) {
-    const c = await db.customer.findUnique({ where: { id: input.customerId } });
-    if (c && rewardAvailable(c.stamps, loyalty)) {
-      loyaltyAvailable = true;
-      if (input.redeemLoyalty) loyaltyDiscount = loyaltyRewardValue(catalog, priced, loyalty);
-    }
-  }
-
   const manualDiscount = Math.max(0, input.manualDiscount?.amount ?? 0);
-  const discount = round2(Math.min(subtotal, promoDiscount + loyaltyDiscount + manualDiscount));
+  const discount = round2(Math.min(subtotal, promoDiscount + manualDiscount));
 
   let deliveryFee = 0;
   if (input.type === "DELIVERY" && ["WEB", "QR", "POS"].includes(input.channel)) {
@@ -92,8 +92,9 @@ export async function quoteOrder(input: QuoteInput): Promise<Quote> {
 
   const notes: string[] = [];
   if (promoCode) notes.push(`Promo ${promoCode}`);
-  if (loyaltyDiscount) notes.push("Loyalty free pizza");
   if (manualDiscount) notes.push(input.manualDiscount?.note || "Manual discount");
+  const total = round2(subtotal - discount + deliveryFee);
+  const earnable = input.channel === "UBER" || input.channel === "PICKME" ? 0 : pointsFor(total - deliveryFee, rewards);
 
   return {
     priced,
@@ -101,13 +102,14 @@ export async function quoteOrder(input: QuoteInput): Promise<Quote> {
     promoDiscount: round2(promoDiscount),
     promoError,
     promoCode,
-    loyaltyDiscount: round2(loyaltyDiscount),
-    loyaltyAvailable,
     manualDiscount: round2(manualDiscount),
     discount,
     deliveryFee,
-    total: round2(subtotal - discount + deliveryFee),
+    total,
     discountNote: notes.join(" + "),
+    pointsNeeded,
+    pointsBalance,
+    pointsEarnable: earnable,
   };
 }
 
@@ -152,13 +154,13 @@ export async function createOrder(input: CreateOrderInput) {
       kind: p.line.kind,
       productId: p.line.productId ?? null,
       variantId: p.line.variantId ?? null,
-      name: p.name,
+      name: p.line.rewardId ? `🎁 ${p.name}` : p.name,
       sizeName: p.sizeName ?? null,
       crustName: p.crustName ?? null,
       quantity: Math.max(1, Math.floor(p.line.quantity)),
       unitPrice: p.unitPrice,
       lineTotal: p.lineTotal,
-      config: { line: p.line, usage: c.usage } as unknown as Prisma.InputJsonValue,
+      config: { line: p.line, usage: c.usage, points: p.points } as unknown as Prisma.InputJsonValue,
       summary: p.summary || null,
       note: p.line.note || null,
       foodCost: c.foodCost,
@@ -169,7 +171,6 @@ export async function createOrder(input: CreateOrderInput) {
     };
   });
 
-  // Carry bags for anything leaving the shop
   if (input.type !== "DINE_IN" && orderSettings.bagIngredientId && orderSettings.bagsPerOrder > 0) {
     const bag = ctx.ingredients.get(orderSettings.bagIngredientId);
     if (bag) {
@@ -178,8 +179,7 @@ export async function createOrder(input: CreateOrderInput) {
     }
   }
 
-  const platformPct =
-    input.channel === "UBER" ? orderSettings.platformCommission.UBER : input.channel === "PICKME" ? orderSettings.platformCommission.PICKME : 0;
+  const platformPct = input.channel === "UBER" ? orderSettings.platformCommission.UBER : input.channel === "PICKME" ? orderSettings.platformCommission.PICKME : 0;
   const platformFee = round2((quote.total * platformPct) / 100);
   const profit = round2(quote.total - quote.deliveryFee - food - pack - royalty - charity - platformFee);
   const paid = !!input.paid;
@@ -208,7 +208,8 @@ export async function createOrder(input: CreateOrderInput) {
         deliveryFee: quote.deliveryFee,
         total: quote.total,
         promoCode: quote.promoCode ?? null,
-        loyaltyRedeemed: quote.loyaltyDiscount > 0,
+        pointsRedeemed: quote.pointsNeeded,
+        pointsEarned: quote.pointsEarnable,
         paymentMethod: input.paymentMethod,
         paymentStatus: paid ? "PAID" : "UNPAID",
         paidAt: paid ? new Date() : null,
@@ -229,8 +230,13 @@ export async function createOrder(input: CreateOrderInput) {
       },
     });
     if (quote.promoCode) await tx.promo.update({ where: { code: quote.promoCode }, data: { uses: { increment: 1 } } });
-    if (quote.loyaltyDiscount > 0 && input.customerId) {
-      await tx.customer.update({ where: { id: input.customerId }, data: { stamps: 0, rewardsUsed: { increment: 1 } } });
+    if (quote.pointsNeeded > 0 && input.customerId) {
+      try {
+        await debit(tx, input.customerId, quote.pointsNeeded, "REDEEM", { note: `Rewards on order #${orderCode(created.number)}`, orderId: created.id });
+      } catch (e) {
+        if (e instanceof PointsError) throw new OrderError(e.message);
+        throw e;
+      }
     }
     if (confirm) await deductStock(tx, created.id, input.staffId ?? null);
     return created;
@@ -245,9 +251,7 @@ export async function createOrder(input: CreateOrderInput) {
         link: `/admin/orders/${order.id}`,
       },
     });
-    if (orderSettings.autoAcceptWeb && input.paymentMethod !== "PAYHERE") {
-      await setOrderStatus(order.id, "CONFIRMED", null);
-    }
+    if (orderSettings.autoAcceptWeb && input.paymentMethod !== "PAYHERE") await setOrderStatus(order.id, "CONFIRMED", null);
   }
   await checkLowStock();
   return order;
@@ -255,24 +259,15 @@ export async function createOrder(input: CreateOrderInput) {
 
 type Tx = Prisma.TransactionClient;
 
-async function moveStock(tx: Tx, orderId: string, usage: Usage, sign: 1 | -1, reason: "SALE" | "VOID", staffId: string | null) {
-  for (const [ingredientId, qty] of Object.entries(usage)) {
-    if (!qty) continue;
-    const ing = await tx.ingredient.update({
-      where: { id: ingredientId },
-      data: { stock: { increment: sign * qty } },
-    }).catch(() => null);
-    if (!ing) continue;
-    await tx.stockMovement.create({
-      data: { ingredientId, change: sign * qty, balance: ing.stock, reason, orderId, staffId, unitCost: ing.costPerUnit },
-    });
-  }
-}
-
 export async function deductStock(tx: Tx, orderId: string, staffId: string | null) {
   const o = await tx.order.findUnique({ where: { id: orderId } });
   if (!o || o.stockDeducted) return;
-  await moveStock(tx, orderId, (o.usage ?? {}) as Usage, -1, "SALE", staffId);
+  for (const [ingredientId, qty] of Object.entries((o.usage ?? {}) as Usage)) {
+    if (!qty) continue;
+    const ing = await tx.ingredient.update({ where: { id: ingredientId }, data: { stock: { decrement: qty } } }).catch(() => null);
+    if (!ing) continue;
+    await tx.stockMovement.create({ data: { ingredientId, change: -qty, balance: ing.stock, reason: "SALE", orderId, staffId, unitCost: ing.costPerUnit } });
+  }
   await tx.order.update({ where: { id: orderId }, data: { stockDeducted: true } });
 }
 
@@ -287,20 +282,10 @@ export async function checkLowStock() {
   const fresh = low.filter((i) => !already.has(`/admin/inventory#${i.id}`));
   if (!fresh.length) return;
   await db.notification.createMany({
-    data: fresh.map((i) => ({
-      type: "LOW_STOCK",
-      title: `Low stock: ${i.name}`,
-      body: `${Math.max(0, Math.round(i.stock))} ${i.unit} left (alert at ${i.lowStock} ${i.unit})`,
-      link: `/admin/inventory#${i.id}`,
-    })),
+    data: fresh.map((i) => ({ type: "LOW_STOCK", title: `Low stock: ${i.name}`, body: `${Math.max(0, Math.round(i.stock))} ${i.unit} left (alert at ${i.lowStock} ${i.unit})`, link: `/admin/inventory#${i.id}` })),
   });
   const s = await getSetting("orders");
-  if (s.ownerAlertPhone) {
-    void sendSms(
-      s.ownerAlertPhone,
-      `Hungry Bar low stock: ${fresh.map((i) => `${i.name} ${Math.max(0, Math.round(i.stock))}${i.unit}`).join(", ")}`,
-    );
-  }
+  if (s.ownerAlertPhone) void sendSms(s.ownerAlertPhone, `Hungry Bar low stock: ${fresh.map((i) => `${i.name} ${Math.max(0, Math.round(i.stock))}${i.unit}`).join(", ")}`);
 }
 
 const FLOW: Record<OrderStatus, OrderStatus[]> = {
@@ -313,12 +298,8 @@ const FLOW: Record<OrderStatus, OrderStatus[]> = {
   CANCELLED: [],
 };
 
-export async function setOrderStatus(
-  orderId: string,
-  to: OrderStatus,
-  staffId: string | null,
-  extra: { reason?: string; riderId?: string | null; markPaid?: boolean } = {},
-) {
+export async function setOrderStatus(orderId: string, to: OrderStatus, staffId: string | null, extra: { reason?: string; riderId?: string | null; markPaid?: boolean } = {}) {
+  const rewards = await getSetting("rewards");
   const result = await db.$transaction(async (tx) => {
     const o = await tx.order.findUnique({ where: { id: orderId } });
     if (!o) throw new OrderError("Order not found");
@@ -328,7 +309,7 @@ export async function setOrderStatus(
     const data: Prisma.OrderUpdateInput = { status: to };
 
     if (to !== "CANCELLED" && !o.stockDeducted) await deductStock(tx, o.id, staffId);
-    if (to === "CONFIRMED" || (!o.confirmedAt && to !== "CANCELLED")) data.confirmedAt = o.confirmedAt ?? now;
+    if (to !== "CANCELLED" && !o.confirmedAt) data.confirmedAt = now;
     if (to === "READY") data.readyAt = now;
     if (to === "OUT_FOR_DELIVERY" && extra.riderId) data.rider = { connect: { id: extra.riderId } };
     if (to === "COMPLETED") {
@@ -337,24 +318,19 @@ export async function setOrderStatus(
         data.paymentStatus = "PAID";
         data.paidAt = now;
       }
-      if (o.customerId && !o.stampAwarded) {
-        await tx.customer.update({
-          where: { id: o.customerId },
-          data: {
-            totalOrders: { increment: 1 },
-            totalSpent: { increment: o.total },
-            ...(o.loyaltyRedeemed ? {} : { stamps: { increment: 1 } }),
-          },
-        });
-        data.stampAwarded = true;
+      if (o.customerId && !o.pointsAwarded) {
+        const c = await tx.customer.findUniqueOrThrow({ where: { id: o.customerId } });
+        await tx.customer.update({ where: { id: o.customerId }, data: { totalOrders: { increment: 1 }, totalSpent: { increment: o.total } } });
+        if (rewards.enabled && o.pointsEarned > 0) await credit(tx, o.customerId, o.pointsEarned, "EARN", { note: `Order #${orderCode(o.number)}`, orderId: o.id });
+        if (rewards.enabled && c.totalOrders === 0 && rewards.welcomeBonus > 0) await credit(tx, o.customerId, rewards.welcomeBonus, "WELCOME", { note: "Welcome bonus for your first order", orderId: o.id });
+        data.pointsAwarded = true;
       }
     }
     if (to === "CANCELLED") {
       data.cancelledAt = now;
       data.cancelReason = extra.reason || null;
       if (o.stockDeducted) {
-        const usage = (o.usage ?? {}) as Usage;
-        for (const [ingredientId, qty] of Object.entries(usage)) {
+        for (const [ingredientId, qty] of Object.entries((o.usage ?? {}) as Usage)) {
           const ing = await tx.ingredient.update({ where: { id: ingredientId }, data: { stock: { increment: qty } } }).catch(() => null);
           if (ing) await tx.stockMovement.create({ data: { ingredientId, change: qty, balance: ing.stock, reason: "VOID", orderId: o.id, staffId } });
         }
@@ -362,11 +338,12 @@ export async function setOrderStatus(
       }
       if (o.promoCode) await tx.promo.update({ where: { code: o.promoCode }, data: { uses: { decrement: 1 } } }).catch(() => null);
       if (o.customerId) {
-        const loyalty = await getSetting("loyalty");
-        if (o.loyaltyRedeemed) {
-          await tx.customer.update({ where: { id: o.customerId }, data: { stamps: Math.max(0, loyalty.stampsRequired - 1), rewardsUsed: { decrement: 1 } } });
-        } else if (o.stampAwarded) {
-          await tx.customer.update({ where: { id: o.customerId }, data: { stamps: { decrement: 1 }, totalOrders: { decrement: 1 }, totalSpent: { decrement: o.total } } });
+        if (o.pointsRedeemed > 0) await credit(tx, o.customerId, o.pointsRedeemed, "REVERSAL", { note: `Refund for cancelled order #${orderCode(o.number)}`, orderId: o.id });
+        if (o.pointsAwarded) {
+          const earned = await tx.pointsTxn.aggregate({ where: { orderId: o.id, reason: { in: ["EARN", "WELCOME"] } }, _sum: { change: true } });
+          const take = earned._sum.change ?? 0;
+          if (take > 0) await debit(tx, o.customerId, take, "REVERSAL", { note: `Points removed: order #${orderCode(o.number)} cancelled`, orderId: o.id, partial: true });
+          await tx.customer.update({ where: { id: o.customerId }, data: { totalOrders: { decrement: 1 }, totalSpent: { decrement: o.total } } });
         }
       }
       if (o.paymentStatus === "PAID") data.paymentStatus = "REFUNDED";
@@ -374,6 +351,8 @@ export async function setOrderStatus(
     return tx.order.update({ where: { id: orderId }, data });
   });
   if (to === "CONFIRMED" || to === "PREPARING") await checkLowStock();
+  // fire-and-forget push to the customer's phone
+  void import("./push").then((m) => m.notifyOrder(orderId)).catch(() => {});
   return result;
 }
 

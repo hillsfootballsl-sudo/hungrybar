@@ -13,7 +13,8 @@ async function reset() {
   const tables = [
     "OrderItem", "Order", "StockMovement", "PurchaseItem", "Purchase", "RecipeLine", "ProductTopping", "ProductVariant",
     "Product", "Addon", "Category", "ToppingSize", "Topping", "Crust", "PizzaSize", "Ingredient", "Supplier", "CashMovement",
-    "Shift", "Staff", "Customer", "OtpCode", "DeliveryZone", "DiningTable", "Promo", "SectorEntry", "Notification", "Setting",
+    "Shift", "Staff", "PointsTxn", "PushSubscription", "Customer", "OtpCode", "DeliveryZone", "DiningTable", "Promo", "SectorEntry", "Notification", "Setting",
+    "ComboSlot", "RewardItem", "Banner", "Media",
   ];
   for (const t of tables) await db.$executeRawUnsafe(`TRUNCATE TABLE "${t}" CASCADE`);
 }
@@ -41,7 +42,6 @@ async function main() {
     { name: "Tomato Sauce (home-made)", category: "SAUCE", stock: 8000, low: 1500, cost: 0.8 },
     { name: "Mozzarella Cheese", category: "CHEESE", stock: 12000, low: 2500, cost: 3.2, sup: supDairy.id },
     { name: "Tandoori Chicken", category: "MEAT", stock: 8000, low: 1500, cost: 2.4, sup: supMeat.id },
-    { name: "Spicy Chicken", category: "MEAT", stock: 3000, low: 600, cost: 2.4, sup: supMeat.id },
     { name: "Beef", category: "MEAT", stock: 7000, low: 1500, cost: 2.8, sup: supMeat.id },
     { name: "Pepperoni (beef)", category: "MEAT", stock: 5000, low: 1000, cost: 4.5, sup: supMeat.id },
     { name: "Green Bell Pepper", category: "VEG", stock: 3000, low: 500, cost: 1.2, sup: supVeg.id },
@@ -50,9 +50,9 @@ async function main() {
     { name: "Onion", category: "VEG", stock: 5000, low: 800, cost: 0.35, sup: supVeg.id },
     { name: "Lasagna Portion (chicken)", unit: "pcs", category: "OTHER", stock: 20, low: 5, cost: 480 },
     { name: "Garlic Bread", unit: "pcs", category: "BAKERY", stock: 60, low: 15, cost: 32 },
-    { name: "Panini Bread (Regular)", unit: "pcs", category: "BAKERY", stock: 40, low: 10, cost: 55 },
-    { name: "Panini Bread (Large)", unit: "pcs", category: "BAKERY", stock: 30, low: 8, cost: 85 },
-    { name: "Cheese Slice", unit: "pcs", category: "CHEESE", stock: 100, low: 20, cost: 45, sup: supDairy.id },
+    { name: "Sub Roll 8 inch", unit: "pcs", category: "BAKERY", stock: 40, low: 10, cost: 70 },
+    { name: "Sandwich Bread Slice", unit: "pcs", category: "BAKERY", stock: 120, low: 30, cost: 12 },
+    { name: "Mayonnaise", category: "SAUCE", stock: 3000, low: 600, cost: 0.9 },
     { name: "Watermelon", category: "FRUIT", stock: 8000, low: 1500, cost: 0.25, sup: supVeg.id },
     { name: "Pineapple", category: "FRUIT", stock: 6000, low: 1200, cost: 0.4, sup: supVeg.id },
     { name: "Mango", category: "FRUIT", stock: 5000, low: 1000, cost: 0.7, sup: supVeg.id },
@@ -72,7 +72,7 @@ async function main() {
     { name: "Detroit Box", unit: "pcs", category: "PACKAGING", stock: 100, low: 20, cost: 80, pack: true, sup: supPack.id },
     { name: "Carry Bag", unit: "pcs", category: "PACKAGING", stock: 500, low: 100, cost: 2.5, pack: true, sup: supPack.id },
     { name: "Juice Cup + Lid + Straw", unit: "pcs", category: "PACKAGING", stock: 300, low: 60, cost: 25, pack: true, sup: supPack.id },
-    { name: "Panini Wrap Paper", unit: "pcs", category: "PACKAGING", stock: 300, low: 60, cost: 8, pack: true, sup: supPack.id },
+    { name: "Sandwich Wrap Paper", unit: "pcs", category: "PACKAGING", stock: 300, low: 60, cost: 8, pack: true, sup: supPack.id },
     { name: "Lasagna Tray", unit: "pcs", category: "PACKAGING", stock: 60, low: 15, cost: 45, pack: true, sup: supPack.id },
   ];
   const ing: Record<string, string> = {};
@@ -119,22 +119,23 @@ async function main() {
   }
 
   // ───────── Categories ─────────
-  const cat = async (name: string, slug: string, tagline: string, icon: string, from: string, to: string, sortOrder: number) =>
-    db.category.create({ data: { name, slug, tagline, icon, availableFrom: from, availableTo: to, sortOrder } });
-  const cPizza = await cat("Original Pizzas", "original-pizzas", "Freshly baked · Served hot · Hand-tossed", "pizza", "11:00", "24:00", 1);
-  const cDetroit = await cat("Detroit Style Pizza", "detroit-style", "If my pizza is not box, I don't want it!", "detroit", "11:00", "24:00", 2);
-  const cFav = await cat("All Time Favourite", "all-time-favourite", "Freshly made at home", "lasagna", "11:00", "24:00", 3);
-  const cSnack = await cat("Snack Attack", "snack-attack", "Spoil yourself while your pizza is getting baked", "garlicbread", "11:00", "24:00", 4);
-  const cPanini = await cat("The Toast Theory · Paninis", "paninis", "Breakfast · Lunch · Dinner", "panini", "06:00", "22:00", 5);
-  const cJuice = await cat("Fresh Juices", "fresh-juices", "Squeezed to order", "juice", "06:00", "22:00", 6);
-  const cMojito = await cat("Mojitos", "mojitos", "Virgin, icy & minty", "mojito", "06:00", "24:00", 7);
-  const cDrinks = await cat("Drinks", "drinks", "", "water", "06:00", "24:00", 8);
+  const cat = async (name: string, slug: string, tagline: string, icon: string, sortOrder: number) =>
+    db.category.create({ data: { name, slug, tagline, icon, availableFrom: "16:00", availableTo: "24:00", sortOrder } });
+  const cDeals = await cat("Hungry Deals", "deals", "Combos that save you more", "deal", 1);
+  const cPizza = await cat("Pizzas", "pizzas", "Freshly baked · Served hot · Hand-tossed", "pizza", 2);
+  const cDetroit = await cat("Detroit Squares", "detroit", "If my pizza is not box, I don't want it!", "detroit", 3);
+  const cSubs = await cat("Subs & Sandwiches", "subs-sandwiches", "From The Toast Theory", "sub", 4);
+  const cSnack = await cat("Sides", "sides", "Lasagna, garlic bread & more", "garlicbread", 5);
+  const cJuice = await cat("Fresh Juices", "fresh-juices", "Squeezed to order", "juice", 6);
+  const cMojito = await cat("Mojitos", "mojitos", "Virgin, icy & minty", "mojito", 7);
+  const cDrinks = await cat("Drinks", "drinks", "", "water", 8);
+  const cFav = cSnack;
 
   // ───────── Pizzas (Menu Board 3) ─────────
   const pizza = async (name: string, desc: string, prices: [number, number, number], preset: Record<string, number>, tags: string[], featured = false, sortOrder = 0) => {
     const p = await db.product.create({
       data: {
-        name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), description: desc, categoryId: cPizza.id, kind: "PIZZA", tags, featured, sortOrder,
+        name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), description: desc, categoryId: cPizza.id, kind: "PIZZA", tags, featured, sortOrder, isVeg: tags.includes("veg"),
         variants: { create: [s1, s2, s4].map((s, i) => ({ name: s.name, sizeId: s.id, price: prices[i], sortOrder: i })) },
         toppings: { create: Object.entries(preset).map(([v, n]) => ({ toppingId: top[v], portions: n })) },
       },
@@ -142,24 +143,24 @@ async function main() {
     return p;
   };
   const base = "Made with fresh dough, home-made tomato sauce, mozzarella cheese";
-  await pizza("Margherita", base, [990, 1650, 1990], { sauce: 1, cheese: 1 }, ["veg"], false, 1);
-  await pizza("Tandoori Chicken", `${base}, tandoori chicken, bell pepper, onion, capsicum`, [1350, 1990, 2450], { sauce: 1, cheese: 1, chicken: 1, pepper_green: 1, onion: 1, capsicum: 1 }, ["bestseller", "spicy"], true, 2);
-  await pizza("Beef Supreme", `${base}, beef, bell pepper, onion, capsicum`, [1550, 2250, 2690], { sauce: 1, cheese: 1, beef: 1, pepper_green: 1, onion: 1, capsicum: 1 }, [], true, 3);
-  await pizza("Pepperoni", `${base}, pepperoni slices`, [1390, 1950, 2490], { sauce: 1, cheese: 1, pepperoni: 1 }, [], true, 4);
-  await pizza("Mix Meat Special", `${base}, tandoori chicken, beef, pepperoni slices`, [1750, 2490, 2990], { sauce: 1, cheese: 1, chicken: 1, beef: 1, pepperoni: 1 }, ["loaded"], true, 5);
+  const pMarg = await pizza("Margherita", base, [990, 1650, 1990], { sauce: 1, cheese: 1 }, ["veg"], false, 1);
+  const pTand = await pizza("Tandoori Chicken", `${base}, tandoori chicken, bell pepper, onion, capsicum`, [1350, 1990, 2450], { sauce: 1, cheese: 1, chicken: 1, pepper_green: 1, onion: 1, capsicum: 1 }, ["bestseller", "spicy"], true, 2);
+  const pBeef = await pizza("Beef Supreme", `${base}, beef, bell pepper, onion, capsicum`, [1550, 2250, 2690], { sauce: 1, cheese: 1, beef: 1, pepper_green: 1, onion: 1, capsicum: 1 }, [], true, 3);
+  const pPep = await pizza("Pepperoni", `${base}, pepperoni slices`, [1390, 1950, 2490], { sauce: 1, cheese: 1, pepperoni: 1 }, [], true, 4);
+  const pMix = await pizza("Mix Meat Special", `${base}, tandoori chicken, beef, pepperoni slices`, [1750, 2490, 2990], { sauce: 1, cheese: 1, chicken: 1, beef: 1, pepperoni: 1 }, ["loaded"], true, 5);
 
   const detroit = async (name: string, desc: string, price: number, preset: Record<string, number>, sortOrder: number) =>
     db.product.create({
       data: {
-        name, slug: "detroit-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), description: desc, categoryId: cDetroit.id, kind: "PIZZA", tags: ["new"], sortOrder,
+        name, slug: "detroit-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), description: desc, categoryId: cDetroit.id, kind: "PIZZA", tags: sortOrder === 1 ? ["new", "veg"] : ["new"], sortOrder, isVeg: sortOrder === 1,
         variants: { create: [{ name: "Detroit Box", sizeId: sD.id, price }] },
         toppings: { create: Object.entries(preset).map(([v, n]) => ({ toppingId: top[v], portions: n })) },
       },
     });
-  await detroit("Box Margherita", "Square, deep-pan, crispy caramelised cheese edges", 850, { sauce: 1, cheese: 2 }, 1);
-  await detroit("Tandoori Loaded", "Detroit pan loaded with tandoori chicken & cheese", 990, { sauce: 1, cheese: 2, chicken: 1, onion: 1 }, 2);
-  await detroit("Beef Supreme", "Detroit pan with beef, peppers & onion", 1100, { sauce: 1, cheese: 2, beef: 1, pepper_green: 1, onion: 1 }, 3);
-  await detroit("Loaded Pepperoni", "Detroit pan with cups of pepperoni", 950, { sauce: 1, cheese: 2, pepperoni: 2 }, 4);
+  const dMarg = await detroit("Box Margherita", "Square, deep-pan, crispy caramelised cheese edges", 850, { sauce: 1, cheese: 2 }, 1);
+  const dTand = await detroit("Tandoori Loaded", "Detroit pan loaded with tandoori chicken & cheese", 990, { sauce: 1, cheese: 2, chicken: 1, onion: 1 }, 2);
+  const dBeef = await detroit("Beef Supreme", "Detroit pan with beef, peppers & onion", 1100, { sauce: 1, cheese: 2, beef: 1, pepper_green: 1, onion: 1 }, 3);
+  const dPep = await detroit("Loaded Pepperoni", "Detroit pan with cups of pepperoni", 950, { sauce: 1, cheese: 2, pepperoni: 2 }, 4);
 
   // ───────── Items ─────────
   const item = async (
@@ -168,49 +169,106 @@ async function main() {
   ) =>
     db.product.create({
       data: {
-        name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + (categoryId === cPanini.id ? "-panini" : ""), description: desc, categoryId, kind: "ITEM", art, tags, featured, sortOrder,
+        name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), description: desc, categoryId, kind: "ITEM", art, tags, featured, sortOrder, isVeg: tags.includes("veg"),
         variants: {
           create: variants.map((v, i) => ({ name: v.name, price: v.price, sortOrder: i, recipe: { create: v.recipe.map(([n, q]) => ({ ingredientId: ing[n], quantity: q })) } })),
         },
       },
     });
 
-  await item(cFav.id, "Chicken Lasagna", "Hungry Bar's all time favourite — layered, cheesy, freshly made at home. Personal portion.", "lasagna",
-    [{ name: "Personal", price: 1150, recipe: [["Lasagna Portion (chicken)", 1], ["Lasagna Tray", 1]] }], 1, ["favourite"], true);
-  await item(cSnack.id, "Garlic Bread", "Warm, buttery, garlicky. 1 piece.", "garlicbread", [{ name: "1 pc", price: 100, recipe: [["Garlic Bread", 1]] }], 1);
+  const iLasagna = await item(cFav.id, "Chicken Lasagna", "Hungry Bar's all time favourite — layered, cheesy, freshly made at home. Personal portion.", "lasagna",
+    [{ name: "Personal", price: 1150, recipe: [["Lasagna Portion (chicken)", 1], ["Lasagna Tray", 1]] }], 2, ["favourite"], true);
+  const iGarlic = await item(cSnack.id, "Garlic Bread", "Warm, buttery, garlicky. 1 piece.", "garlicbread", [{ name: "1 pc", price: 100, recipe: [["Garlic Bread", 1]] }], 1, ["veg"]);
 
-  const panini = async (name: string, r: number, l: number, filling: [string, number][], sortOrder: number) =>
-    item(cPanini.id, name, "Pressed, toasty, melty — from The Toast Theory", "panini", [
-      { name: "Regular", price: r, recipe: [["Panini Bread (Regular)", 1], ["Panini Wrap Paper", 1], ...filling] },
-      { name: "Large", price: l, recipe: [["Panini Bread (Large)", 1], ["Panini Wrap Paper", 1], ...filling.map(([n, q]) => [n, Math.round(q * 1.5)] as [string, number])] },
-    ], sortOrder);
-  await panini("Classic Cheese", 550, 750, [["Mozzarella Cheese", 40], ["Cheese Slice", 1]], 1);
-  await panini("Tandoori Chicken", 570, 770, [["Tandoori Chicken", 60], ["Mozzarella Cheese", 25], ["Onion", 10]], 2);
-  await panini("Spicy Chicken", 550, 750, [["Spicy Chicken", 60], ["Mozzarella Cheese", 25]], 3);
-  await panini("Roast Beef", 590, 790, [["Beef", 60], ["Mozzarella Cheese", 25]], 4);
-  await panini("Mix Meat", 620, 820, [["Tandoori Chicken", 30], ["Beef", 30], ["Pepperoni (beef)", 15], ["Mozzarella Cheese", 25]], 5);
-  await db.addon.create({ data: { name: "Cheese Slice", price: 200, categoryId: cPanini.id, ingredientId: ing["Cheese Slice"], quantity: 1 } });
+  const sub = async (name: string, desc: string, art: string, price: number, recipe: [string, number][], sortOrder: number, tags: string[] = []) =>
+    item(cSubs.id, name, desc, art, [{ name: art === "sub" ? "8 inch" : "Regular", price, recipe }], sortOrder, tags);
+  const sTand = await sub("Tandoori Chicken Mini Sub", "8 inch sub with tandoori chicken, tomato sauce and mayonnaise", "sub", 500,
+    [["Sub Roll 8 inch", 1], ["Tandoori Chicken", 70], ["Tomato Sauce (home-made)", 15], ["Mayonnaise", 20], ["Onion", 10], ["Sandwich Wrap Paper", 1]], 1, ["bestseller"]);
+  const sBeef = await sub("Beef Mini Sub", "8 inch sub with beef, tomato sauce and mayonnaise", "sub", 600,
+    [["Sub Roll 8 inch", 1], ["Beef", 70], ["Tomato Sauce (home-made)", 15], ["Mayonnaise", 20], ["Onion", 10], ["Sandwich Wrap Paper", 1]], 2);
+  await sub("Tandoori Chicken Sandwich", "Fresh sandwich bread with tandoori chicken, tomato sauce and mayonnaise", "sandwich", 480,
+    [["Sandwich Bread Slice", 2], ["Tandoori Chicken", 60], ["Tomato Sauce (home-made)", 10], ["Mayonnaise", 15], ["Sandwich Wrap Paper", 1]], 3);
+  await sub("Beef Sandwich", "Fresh sandwich bread with beef, tomato sauce and mayonnaise", "sandwich", 550,
+    [["Sandwich Bread Slice", 2], ["Beef", 60], ["Tomato Sauce (home-made)", 10], ["Mayonnaise", 15], ["Sandwich Wrap Paper", 1]], 4);
 
   const juice = async (name: string, color: string, price: number, fruit: string, grams: number, sortOrder: number) =>
-    item(cJuice.id, `${name} Juice`, "Fresh fruit, blended to order", `juice:${color}`, [{ name: "Glass", price, recipe: [[fruit, grams], ["Sugar Syrup", 20], ["Juice Cup + Lid + Straw", 1]] }], sortOrder);
-  await juice("Watermelon", "#F25C54", 450, "Watermelon", 350, 1);
-  await juice("Pineapple", "#F7C548", 490, "Pineapple", 300, 2);
-  await juice("Mango", "#FFA62B", 590, "Mango", 250, 3);
-  await juice("Papaya", "#FF8C42", 450, "Papaya", 300, 4);
-  await juice("Avocado", "#A7C957", 650, "Avocado", 200, 5);
-  await juice("Lime", "#C5E063", 350, "Lime", 60, 6);
+    item(cJuice.id, `${name} Juice`, "Fresh fruit, blended to order", `juice:${color}`, [{ name: "Glass", price, recipe: [[fruit, grams], ["Sugar Syrup", 20], ["Juice Cup + Lid + Straw", 1]] }], sortOrder, ["veg"]);
+  const jWater = await juice("Watermelon", "#F25C54", 450, "Watermelon", 350, 1);
+  const jPine = await juice("Pineapple", "#F7C548", 490, "Pineapple", 300, 2);
+  const jMango = await juice("Mango", "#FFA62B", 590, "Mango", 250, 3);
+  const jPapaya = await juice("Papaya", "#FF8C42", 450, "Papaya", 300, 4);
+  const jAvo = await juice("Avocado", "#A7C957", 650, "Avocado", 200, 5);
+  const jLime = await juice("Lime", "#C5E063", 350, "Lime", 60, 6);
 
   const mojito = async (name: string, color: string, price: number, extra: [string, number][], sortOrder: number) =>
     item(cMojito.id, `${name} Mojito`, "Virgin mojito — mint, lime, soda, crushed ice", `mojito:${color}`, [
       { name: "Glass", price, recipe: [["Mint Leaves", 8], ["Lime", 30], ["Sugar Syrup", 30], ["Soda Water", 250], ["Juice Cup + Lid + Straw", 1], ...extra] },
-    ], sortOrder, sortOrder === 1 ? ["bestseller"] : []);
-  await mojito("Classic Mint", "#B8E986", 590, [], 1);
-  await mojito("Passion Fruit", "#F9C80E", 650, [["Passion Fruit", 60]], 2);
-  await mojito("Strawberry", "#FF5D73", 690, [["Strawberry", 60]], 3);
-  await mojito("Watermelon", "#FF6B6B", 650, [["Watermelon", 120]], 4);
-  await mojito("Blue Lagoon", "#3AB0FF", 690, [["Blue Curacao Syrup (non-alc)", 25]], 5);
+    ], sortOrder, sortOrder === 1 ? ["bestseller", "veg"] : ["veg"]);
+  const mMint = await mojito("Classic Mint", "#B8E986", 590, [], 1);
+  const mPassion = await mojito("Passion Fruit", "#F9C80E", 650, [["Passion Fruit", 60]], 2);
+  const mStraw = await mojito("Strawberry", "#FF5D73", 690, [["Strawberry", 60]], 3);
+  const mWater = await mojito("Watermelon", "#FF6B6B", 650, [["Watermelon", 120]], 4);
+  const mBlue = await mojito("Blue Lagoon", "#3AB0FF", 690, [["Blue Curacao Syrup (non-alc)", 25]], 5);
 
-  await item(cDrinks.id, "Water Bottle", "500ml", "water", [{ name: "500ml", price: 100, recipe: [["Water Bottle 500ml", 1]] }], 1);
+  await item(cDrinks.id, "Water Bottle", "500ml", "water", [{ name: "500ml", price: 100, recipe: [["Water Bottle 500ml", 1]] }], 1, ["veg"]);
+
+  // ───────── Combos (suggested — edit in Admin → Menu → Hungry Deals) ─────────
+  // Each slot lists the allowed choices; "upcharge" is added for pricier picks so a combo never costs more than ordering separately.
+  type Opt = { productId: string; sizeId?: string; variantId?: string; upcharge: number };
+  const pizzaOpts = (sizeId: string, ups: [{ id: string }, number][]) => ups.map(([p, u]) => ({ productId: p.id, sizeId, upcharge: u }));
+  const itemOpts = (ups: [{ id: string; variants?: { id: string }[] }, number][]) => ups.map(([p, u]) => ({ productId: p.id, upcharge: u }));
+  const mojitoOpts = itemOpts([[mMint, 0], [mPassion, 60], [mWater, 60], [mStraw, 100], [mBlue, 100]]);
+  const juiceOpts = itemOpts([[jWater, 0], [jPapaya, 0], [jLime, 0], [jPine, 40], [jMango, 140], [jAvo, 200]]);
+  const combo = async (name: string, desc: string, price: number, slots: { label: string; quantity: number; options: Opt[] }[], sortOrder: number, tags: string[] = []) =>
+    db.product.create({
+      data: {
+        name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), description: desc, categoryId: cDeals.id, kind: "COMBO", art: "deal", tags, featured: sortOrder <= 3, sortOrder,
+        variants: { create: [{ name: "Deal", price }] },
+        comboSlots: { create: slots.map((sl, i) => ({ label: sl.label, quantity: sl.quantity, sortOrder: i, options: sl.options })) },
+      },
+    });
+  await combo("Solo Hungry", "Any 1-person pizza + garlic bread + a mojito", 1490, [
+    { label: "Your 1-person pizza", quantity: 1, options: pizzaOpts(s1.id, [[pMarg, 0], [pTand, 360], [pPep, 400], [pBeef, 560], [pMix, 760]]) },
+    { label: "Garlic bread", quantity: 1, options: itemOpts([[iGarlic, 0]]) },
+    { label: "Your mojito", quantity: 1, options: mojitoOpts },
+  ], 1, ["save"]);
+  await combo("Couple's Combo", "Any 2-person pizza + 2 garlic bread + 2 mojitos", 2750, [
+    { label: "Your 2-person pizza", quantity: 1, options: pizzaOpts(s2.id, [[pMarg, 0], [pPep, 300], [pTand, 340], [pBeef, 600], [pMix, 840]]) },
+    { label: "Garlic bread", quantity: 2, options: itemOpts([[iGarlic, 0]]) },
+    { label: "Your mojitos", quantity: 2, options: mojitoOpts },
+  ], 2, ["bestseller"]);
+  await combo("Family Feast", "Any 4-person pizza + chicken lasagna + 4 garlic bread + 4 fresh juices", 4790, [
+    { label: "Your 4-person pizza", quantity: 1, options: pizzaOpts(s4.id, [[pMarg, 0], [pTand, 460], [pPep, 500], [pBeef, 700], [pMix, 1000]]) },
+    { label: "Chicken lasagna", quantity: 1, options: itemOpts([[iLasagna, 0]]) },
+    { label: "Garlic bread", quantity: 4, options: itemOpts([[iGarlic, 0]]) },
+    { label: "Your fresh juices", quantity: 4, options: juiceOpts },
+  ], 3, ["family"]);
+  await combo("Sub Squad", "Any 2 mini subs + 2 fresh juices", 1690, [
+    { label: "Your mini subs", quantity: 2, options: itemOpts([[sTand, 0], [sBeef, 100]]) },
+    { label: "Your fresh juices", quantity: 2, options: juiceOpts },
+  ], 4);
+  await combo("Detroit Duo", "Any 2 Detroit squares + 2 mojitos", 2590, [
+    { label: "Your Detroit squares", quantity: 2, options: pizzaOpts(sD.id, [[dMarg, 0], [dPep, 100], [dTand, 140], [dBeef, 250]]) },
+    { label: "Your mojitos", quantity: 2, options: mojitoOpts },
+  ], 5);
+
+  // ───────── Rewards menu (points) ─────────
+  const vOf = async (productId: string, sizeId?: string) => (await db.productVariant.findFirst({ where: { productId, ...(sizeId ? { sizeId } : {}) } }))?.id ?? null;
+  const rewards: [string, string, number, string, string | undefined][] = [
+    ["Free garlic bread", "Warm, buttery, garlicky", 150, iGarlic.id, undefined],
+    ["Free classic mint mojito", "Icy, minty, virgin", 600, mMint.id, undefined],
+    ["Free tandoori chicken mini sub", "8 inch, loaded", 700, sTand.id, undefined],
+    ["Free Detroit box margherita", "Square, crispy cheese edges", 850, dMarg.id, sD.id],
+    ["Free 1-person margherita", "Our classic", 1000, pMarg.id, s1.id],
+    ["Free 2-person margherita", "Share it (or don't)", 1650, pMarg.id, s2.id],
+  ];
+  for (const [i, [name, description, points, productId, sizeId]] of rewards.entries())
+    await db.rewardItem.create({ data: { name, description, points, productId, variantId: await vOf(productId, sizeId), sortOrder: i } });
+
+  // ───────── Homepage banners ─────────
+  await db.banner.create({ data: { title: "Fresh. Hot. Hand-tossed.", subtitle: "100% halal pizzas, made to order in Dehiwala", link: "/menu?c=pizzas", cta: "Order pizza", theme: "dark", sortOrder: 1 } });
+  await db.banner.create({ data: { title: "Build it your way", subtitle: "Pick every scoop and topping, and watch your pizza come alive", link: "/menu?build=1", cta: "Start building", theme: "red", sortOrder: 2 } });
+  await db.banner.create({ data: { title: "Couple's Combo Rs. 2,750", subtitle: "2-person pizza + 2 garlic bread + 2 mojitos", link: "/menu?c=deals", cta: "Grab the deal", theme: "cream", sortOrder: 3 } });
 
   // ───────── Delivery zones (free around Dehiwala) ─────────
   const zones: [string, number, number][] = [
@@ -232,7 +290,6 @@ async function main() {
   await db.promo.create({ data: { code: "WELCOME10", description: "10% off your first online order", type: "PERCENT", value: 10, minOrder: 1500, maxDiscount: 500, webOnly: true } });
 
   // ───────── Settings ─────────
-  await db.setting.create({ data: { key: "loyalty", value: { enabled: true, stampsRequired: 10, rewardSizeId: s1.id } } });
   await db.setting.create({
     data: { key: "orders", value: { acceptingOnline: true, autoAcceptWeb: false, bagIngredientId: ing["Carry Bag"], bagsPerOrder: 1, platformCommission: { UBER: 30, PICKME: 25 }, ownerAlertPhone: "", prepMinutes: 20, freeDeliveryNote: "Free delivery around Dehiwala" } },
   });
@@ -277,14 +334,15 @@ async function seedDemo() {
         paymentMethod: channel === "UBER" ? "UBER" : channel === "PICKME" ? "PICKME" : pick(["CASH", "CASH", "CARD"]), paid: true, confirm: true, staffId: owner.id,
       });
       if (day > 0 || k < n - 3) await setOrderStatus(o.id, "COMPLETED", owner.id);
-      const when = new Date(Date.now() - day * 86400000 - Math.floor(rnd() * 9) * 3600000);
+      const todayStart = new Date(new Date().toISOString().slice(0, 10) + "T10:30:00Z").getTime(); // 4pm Colombo
+      const when = new Date(Math.min(Date.now() - 60000, todayStart - day * 86400000 + Math.floor(rnd() * 7.5 * 3600000)));
       await db.order.update({ where: { id: o.id }, data: { createdAt: when, confirmedAt: when, completedAt: day > 0 || k < n - 3 ? new Date(when.getTime() + 30 * 60000) : null } });
       await db.stockMovement.updateMany({ where: { orderId: o.id }, data: { createdAt: when } });
     }
   }
   // Restock via a demo purchase so the inventory looks realistic (leave a couple of items low to show alerts)
   const ings = await db.ingredient.findMany();
-  const keepLow = new Set(["Mozzarella Cheese", "Panini Bread (Regular)", "Lime"]);
+  const keepLow = new Set(["Mozzarella Cheese", "Sub Roll 8 inch", "Lime"]);
   const purchase = await db.purchase.create({ data: { invoiceNo: "DEMO-001", note: "Demo restock", date: new Date(Date.now() - 86400000) } });
   let total = 0;
   for (const i of ings) {

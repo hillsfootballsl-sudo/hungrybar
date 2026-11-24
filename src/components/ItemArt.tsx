@@ -45,6 +45,44 @@ export function ItemArt({ art, className }: { art?: string | null; className?: s
           <path d="M20 90 Q60 74 100 90 L98 96 Q60 84 22 96 Z" fill="#C98A3E" stroke="#262626" strokeWidth="3" strokeLinejoin="round" />
         </svg>
       );
+    case "sub":
+      return (
+        <svg viewBox="0 0 120 120" className={className}>
+          <ellipse cx="60" cy="92" rx="50" ry="6" fill="#000" opacity=".18" />
+          <path d="M8 66 Q8 50 26 48 L96 48 Q114 50 112 66 Q112 74 100 76 L20 76 Q8 74 8 66Z" fill="#D9934A" stroke="#262626" strokeWidth="3" strokeLinejoin="round" />
+          <path d="M14 70 Q30 62 46 70 Q62 62 78 70 Q94 62 108 70" stroke="#3F9D45" strokeWidth="6" fill="none" strokeLinecap="round" />
+          <rect x="14" y="70" width="92" height="9" rx="4" fill="#C8662B" />
+          {[24, 40, 56, 72, 88].map((x) => (
+            <rect key={x} x={x} y="71" width="10" height="6" rx="2" fill="#8E3D16" opacity=".7" />
+          ))}
+          <path d="M16 80 Q60 88 104 80 L102 86 Q60 94 18 86Z" fill="#C98A3E" stroke="#262626" strokeWidth="3" strokeLinejoin="round" />
+          <path d="M30 56 l10 -4 M54 54 l10 -4 M78 56 l10 -4" stroke="#F8DDA6" strokeWidth="3" strokeLinecap="round" />
+          <path d="M20 66 q40 -8 80 0" stroke="#F4F1E8" strokeWidth="3" fill="none" strokeDasharray="4 6" />
+        </svg>
+      );
+    case "sandwich":
+      return (
+        <svg viewBox="0 0 120 120" className={className}>
+          <ellipse cx="60" cy="98" rx="42" ry="6" fill="#000" opacity=".18" />
+          <path d="M16 86 L60 22 L104 86 Z" fill="#F3D9A4" stroke="#262626" strokeWidth="3" strokeLinejoin="round" />
+          <path d="M22 80 L60 26 L98 80" stroke="#C98A3E" strokeWidth="6" fill="none" strokeLinejoin="round" />
+          <path d="M24 74 Q42 66 60 74 Q78 66 96 74" stroke="#3F9D45" strokeWidth="6" fill="none" strokeLinecap="round" />
+          <path d="M28 80 L92 80 L96 86 L24 86Z" fill="#C8662B" stroke="#262626" strokeWidth="2" />
+          <path d="M34 66 L86 66" stroke="#EE4224" strokeWidth="5" strokeLinecap="round" />
+        </svg>
+      );
+    case "deal":
+      return (
+        <svg viewBox="0 0 120 120" className={className}>
+          <circle cx="50" cy="62" r="40" fill="#E9B66B" stroke="#262626" strokeWidth="3" />
+          <circle cx="50" cy="62" r="32" fill="#D7351E" />
+          {[[38, 50], [62, 56], [46, 74], [60, 78], [34, 66]].map(([x, y], i) => (
+            <circle key={i} cx={x} cy={y} r="6" fill="#A62417" />
+          ))}
+          <rect x="78" y="40" width="30" height="50" rx="6" fill="#B8E986" stroke="#262626" strokeWidth="3" />
+          <path d="M96 20 L90 44" stroke="#262626" strokeWidth="4" strokeLinecap="round" />
+        </svg>
+      );
     case "lasagna":
       return (
         <svg viewBox="0 0 120 120" className={className}>
