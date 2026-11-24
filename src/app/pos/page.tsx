@@ -23,8 +23,8 @@ export default async function PosPage() {
       zones={zones.map((z) => ({ id: z.id, name: z.name, fee: z.fee }))}
       tables={tables.map((t) => ({ id: t.id, label: t.label }))}
       riders={riders}
-      print={{ receipt: settings.receipt, shop: settings.shop, stampsRequired: settings.loyalty.stampsRequired }}
-      loyaltyEnabled={settings.loyalty.enabled}
+      print={{ receipt: settings.receipt, shop: settings.shop, pointName: settings.rewards.pointName }}
+      loyaltyEnabled={settings.rewards.enabled}
     />
   );
 }

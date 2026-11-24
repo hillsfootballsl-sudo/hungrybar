@@ -27,7 +27,7 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
       <div className="mb-4 flex flex-wrap gap-2">
         <Badge tone={o.status === "COMPLETED" ? "good" : o.status === "CANCELLED" ? "bad" : "info"}>{o.status}</Badge>
         <Badge tone={o.paymentStatus === "PAID" ? "good" : "warn"}>{o.paymentMethod} · {o.paymentStatus}</Badge>
-        {o.loyaltyRedeemed && <Badge tone="warn">Free pizza redeemed</Badge>}
+        {o.pointsRedeemed > 0 && <Badge tone="warn">{o.pointsRedeemed} points used</Badge>}{o.pointsEarned > 0 && <Badge tone="info">{o.pointsAwarded ? "Earned" : "Will earn"} {o.pointsEarned} pts</Badge>}
         {o.cancelReason && <Badge tone="bad">Cancelled: {o.cancelReason}</Badge>}
       </div>
       <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
@@ -86,7 +86,7 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
           </Card>
           <Card title="Customer">
             <p className="font-bold">{o.customerName ?? "Walk-in"}</p>
-            {o.customerPhone && <p>0{o.customerPhone.slice(2)} {o.customer && <span className="text-sm text-char-400">· ⭐ {o.customer.stamps} stamps</span>}</p>}
+            {o.customerPhone && <p>0{o.customerPhone.slice(2)} {o.customer && <span className="text-sm text-char-400">· ⭐ {o.customer.points} points</span>}</p>}
             {o.table && <p>Table {o.table.label}</p>}
             {o.address && <p className="text-sm">{o.address}{o.landmark ? ` — ${o.landmark}` : ""}</p>}
             {o.lat && o.lng && <a className="text-sm text-tomato underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${o.lat},${o.lng}`}>Pinned location ↗</a>}
@@ -94,7 +94,7 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
             {o.rider && <p className="text-sm">Rider: {o.rider.name}</p>}
             {o.note && <p className="mt-2 rounded bg-cream-100 p-2 text-sm">{o.note}</p>}
           </Card>
-          <OrderActions ticket={toTicket(o)} print={{ receipt: settings.receipt, shop: settings.shop, stampsRequired: settings.loyalty.stampsRequired }} />
+          <OrderActions ticket={toTicket(o)} print={{ receipt: settings.receipt, shop: settings.shop, pointName: settings.rewards.pointName }} />
         </div>
       </div>
     </div>

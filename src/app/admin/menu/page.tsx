@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ActionButton, FormDialog } from "@/components/admin/FormDialog";
+import { PhotoUpload } from "@/components/admin/PhotoUpload";
 import { Badge, Card, lkr, PageHeader } from "@/components/admin/ui";
 import { saveAddon, saveCategory, toggleProduct } from "@/lib/actions/admin";
 import { db } from "@/lib/db";
@@ -17,9 +18,10 @@ export default async function MenuAdmin() {
     { name: "tagline", label: "Tagline", type: "text" as const },
     { name: "availableFrom", label: "Available from", type: "time" as const, half: true },
     { name: "availableTo", label: "Available until", type: "time" as const, half: true, hint: "Use 24:00 for midnight" },
-    { name: "icon", label: "Icon key", type: "select" as const, options: ["pizza", "detroit", "lasagna", "garlicbread", "panini", "juice", "mojito", "water"].map((v) => ({ value: v, label: v })), half: true },
+    { name: "icon", label: "Type", type: "select" as const, options: [["deal", "Deals"], ["pizza", "Pizzas"], ["detroit", "Detroit"], ["sub", "Subs"], ["garlicbread", "Sides"], ["juice", "Juices"], ["mojito", "Mojitos"], ["water", "Drinks"]].map(([v, l]) => ({ value: v, label: l })), half: true },
     { name: "sortOrder", label: "Order", type: "number" as const, half: true },
-    { name: "active", label: "Visible", type: "checkbox" as const },
+    { name: "active", label: "Visible", type: "checkbox" as const, half: true },
+    { name: "showOnHome", label: "Show on homepage", type: "checkbox" as const, half: true },
   ];
   const ingOpts = [{ value: "", label: "— no stock item —" }, ...ings.map((i) => ({ value: i.id, label: `${i.name} (${i.unit})` }))];
   return (
@@ -50,13 +52,15 @@ export default async function MenuAdmin() {
               </div>
             }
           >
+            <div className="mb-3"><PhotoUpload target="category" id={c.id} current={c.imageId ? `/media/${c.imageId}` : null} label="Homepage tile photo (optional)" /></div>
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {c.products.map((p) => (
                 <div key={p.id} className={`flex items-center justify-between gap-2 rounded-lg border border-char-100 p-3 ${p.active ? "" : "opacity-50"}`}>
                   <div className="min-w-0">
                     <Link href={`/admin/menu/${p.id}`} className="font-bold hover:text-tomato">{p.name}</Link>
                     <p className="truncate text-xs text-char-400">{p.variants.map((v) => `${v.name} ${lkr(v.price)}`).join(" · ")}</p>
-                    <div className="mt-1 flex gap-1">{p.featured && <Badge tone="warn">featured</Badge>}{p.kind === "PIZZA" && <Badge tone="info">builder</Badge>}</div>
+                    {p.image && <p className="text-[11px] font-bold text-basil">📷 has photo</p>}
+                    <div className="mt-1 flex gap-1">{p.featured && <Badge tone="warn">featured</Badge>}{p.kind === "PIZZA" && <Badge tone="info">builder</Badge>}{p.kind === "COMBO" && <Badge tone="warn">combo</Badge>}</div>
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <ActionButton action={toggleProduct.bind(null, p.id, !p.active)}>{p.active ? "Hide" : "Show"}</ActionButton>

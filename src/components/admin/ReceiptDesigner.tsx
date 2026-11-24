@@ -14,18 +14,18 @@ const SAMPLE: PrintOrder = {
     { name: "Classic Mint Mojito", quantity: 2, lineTotal: 1180 },
     { name: "Garlic Bread", quantity: 2, lineTotal: 200, note: "extra crispy" },
   ],
-  subtotal: 3670, discount: 0, deliveryFee: 0, total: 3670, paymentMethod: "CASH", paymentStatus: "PAID", amountTendered: 5000, changeGiven: 1330, stamps: 6,
+  subtotal: 3670, discount: 0, deliveryFee: 0, total: 3670, paymentMethod: "CASH", paymentStatus: "PAID", amountTendered: 5000, changeGiven: 1330, pointsBalance: 845, pointsEarned: 367,
 };
 
-export function ReceiptDesigner({ initial, shop, stampsRequired }: { initial: ReceiptTemplate; shop: ShopSettings; stampsRequired: number }) {
+export function ReceiptDesigner({ initial, shop, pointName }: { initial: ReceiptTemplate; shop: ShopSettings; pointName: string }) {
   const [t, setT] = useState(initial);
   const [kind, setKind] = useState<"receipt" | "kot">("receipt");
   const [saved, setSaved] = useState(true);
   const [pending, start] = useTransition();
   const { toast, view } = useToasts();
-  const printer = usePrinter({ receipt: t, shop, stampsRequired }, toast);
+  const printer = usePrinter({ receipt: t, shop, pointName }, toast);
   const ref = useRef<HTMLDivElement>(null);
-  const html = useMemo(() => opsToHtml(kind === "receipt" ? receiptOps(SAMPLE, t, shop, { stampsRequired }) : kotOps(SAMPLE), t.paperWidth), [t, shop, kind, stampsRequired]);
+  const html = useMemo(() => opsToHtml(kind === "receipt" ? receiptOps(SAMPLE, t, shop, { pointName }) : kotOps(SAMPLE), t.paperWidth), [t, shop, kind, pointName]);
   useEffect(() => {
     if (ref.current) void fillQrs(ref.current);
   }, [html]);
@@ -62,7 +62,7 @@ export function ReceiptDesigner({ initial, shop, stampsRequired }: { initial: Re
           <Toggle k="showCustomer" label="Customer & delivery details" />
           <Toggle k="showCashier" label="Cashier name" />
           <Toggle k="showModifiers" label="Topping changes per item" />
-          <Toggle k="showLoyalty" label="Stamp card progress" />
+          <Toggle k="showPoints" label="Points earned & balance" />
           <Toggle k="showQr" label="QR code" />
           <Toggle k="largeTotal" label="Large total" />
           <Toggle k="autoPrint" label="Auto-print after each sale" />

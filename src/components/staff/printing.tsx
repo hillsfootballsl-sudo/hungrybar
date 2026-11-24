@@ -8,7 +8,7 @@ import type { ReceiptTemplate, ShopSettings } from "@/lib/settings";
 export interface PrintConfig {
   receipt: ReceiptTemplate;
   shop: ShopSettings;
-  stampsRequired: number;
+  pointName: string;
 }
 
 export function usePrinter(cfg: PrintConfig, toast: (msg: string, bad?: boolean) => void) {
@@ -36,7 +36,7 @@ export function usePrinter(cfg: PrintConfig, toast: (msg: string, bad?: boolean)
   const printReceipt = useCallback(
     (t: Ticket, opts: { drawer?: boolean } = {}) =>
       run(() =>
-        printOps(receiptOps(t, cfg.receipt, cfg.shop, { stampsRequired: cfg.stampsRequired, openDrawer: opts.drawer }), {
+        printOps(receiptOps(t, cfg.receipt, cfg.shop, { pointName: cfg.pointName, openDrawer: opts.drawer }), {
           paperWidth: cfg.receipt.paperWidth,
           logoWidth: cfg.receipt.logoWidth,
           copies: cfg.receipt.copies,

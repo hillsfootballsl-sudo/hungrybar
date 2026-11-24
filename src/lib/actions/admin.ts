@@ -6,7 +6,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { MANAGERS, requireStaff } from "../auth";
 import { db } from "../db";
+import { saveImage } from "../media";
 import { checkLowStock } from "../orders";
+import { credit, debit } from "../points";
 import { DEFAULTS, setSetting, type SettingKey } from "../settings";
 
 type Res = { ok: true; id?: string } | { ok: false; error: string };
@@ -124,8 +126,8 @@ const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").repla
 
 export async function saveCategory(input: unknown) {
   return guard(async () => {
-    const d = z.object({ id: z.string().optional(), name: str().min(1), tagline: str(120).optional(), icon: str(30).optional(), availableFrom: z.string().regex(/^\d\d:\d\d$/), availableTo: z.string().regex(/^\d\d:\d\d$/), sortOrder: z.coerce.number().int(), active: bool }).parse(input);
-    const data = { name: d.name, tagline: d.tagline || null, icon: d.icon || null, availableFrom: d.availableFrom, availableTo: d.availableTo, sortOrder: d.sortOrder, active: d.active };
+    const d = z.object({ id: z.string().optional(), name: str().min(1), tagline: str(120).optional(), icon: str(30).optional(), availableFrom: z.string().regex(/^\d\d:\d\d$/), availableTo: z.string().regex(/^\d\d:\d\d$/), sortOrder: z.coerce.number().int(), active: bool, showOnHome: bool }).parse(input);
+    const data = { name: d.name, tagline: d.tagline || null, icon: d.icon || null, availableFrom: d.availableFrom, availableTo: d.availableTo, sortOrder: d.sortOrder, active: d.active, showOnHome: d.showOnHome };
     return d.id ? db.category.update({ where: { id: d.id }, data }) : db.category.create({ data: { ...data, slug: slugify(d.name) + "-" + randomBytes(2).toString("hex") } });
   }, ["/admin/menu", "/menu", "/"]);
 }
@@ -135,7 +137,8 @@ const productSchema = z.object({
   name: str().min(1, "Name required"),
   description: str(400).optional(),
   categoryId: z.string(),
-  kind: z.enum(["PIZZA", "ITEM"]),
+  kind: z.enum(["PIZZA", "ITEM", "COMBO"]),
+  isVeg: z.boolean().optional(),
   art: str(40).optional(),
   image: str(400).optional(),
   tags: z.array(str(20)).max(6),
@@ -157,13 +160,23 @@ const productSchema = z.object({
     )
     .min(1, "Add at least one size/variant"),
   toppings: z.record(z.string(), z.number().int().min(0).max(10)),
+  slots: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        label: str(60).min(1, "Name each combo choice"),
+        quantity: z.coerce.number().int().min(1).max(10),
+        options: z.array(z.object({ productId: z.string(), sizeId: optId, variantId: optId, upcharge: num.min(0) })).min(1, "Each combo choice needs at least one option"),
+      }),
+    )
+    .optional(),
 });
 
 export async function saveProduct(input: unknown) {
   return guard(async () => {
     const d = productSchema.parse(input);
     return db.$transaction(async (tx) => {
-      const base = { name: d.name, description: d.description || null, categoryId: d.categoryId, kind: d.kind, art: d.art || null, image: d.image || null, tags: d.tags, featured: d.featured, active: d.active, sortOrder: d.sortOrder };
+      const base = { name: d.name, description: d.description || null, categoryId: d.categoryId, kind: d.kind, isVeg: d.isVeg ?? d.tags.includes("veg"), art: d.art || null, image: d.image || null, tags: d.tags, featured: d.featured, active: d.active, sortOrder: d.sortOrder };
       const p = d.id ? await tx.product.update({ where: { id: d.id }, data: base }) : await tx.product.create({ data: { ...base, slug: slugify(d.name) + "-" + randomBytes(2).toString("hex") } });
       // variants: update existing, create new, deactivate removed (keeps order history intact)
       const keep: string[] = [];
@@ -178,6 +191,11 @@ export async function saveProduct(input: unknown) {
       await tx.productTopping.deleteMany({ where: { productId: p.id } });
       const tops = Object.entries(d.toppings).filter(([, n]) => n > 0);
       if (d.kind === "PIZZA" && tops.length) await tx.productTopping.createMany({ data: tops.map(([toppingId, portions]) => ({ productId: p.id, toppingId, portions })) });
+      if (d.kind === "COMBO") {
+        if (!d.slots?.length) throw new Error("Add at least one choice to the combo");
+        await tx.comboSlot.deleteMany({ where: { productId: p.id } });
+        for (const [i, sl] of d.slots.entries()) await tx.comboSlot.create({ data: { productId: p.id, label: sl.label, quantity: sl.quantity, sortOrder: i, options: sl.options } });
+      }
       return p;
     });
   }, ["/admin/menu", "/menu", "/", "/build"]);
@@ -239,11 +257,31 @@ export async function saveTopping(input: unknown) {
 }
 
 // ───────── Customers, promos ─────────
-export async function setStamps(input: unknown) {
+export async function saveCustomer(input: unknown) {
   return guard(async () => {
-    const d = z.object({ id: z.string(), stamps: z.coerce.number().int().min(0).max(100), name: str(60).optional(), notes: str(300).optional() }).parse(input);
-    return db.customer.update({ where: { id: d.id }, data: { stamps: d.stamps, name: d.name || undefined, notes: d.notes ?? undefined } });
+    const d = z.object({ id: z.string(), name: str(60).optional(), notes: str(300).optional(), birthday: z.string().regex(/^(\d\d-\d\d)?$/).optional() }).parse(input);
+    return db.customer.update({ where: { id: d.id }, data: { name: d.name || undefined, notes: d.notes ?? undefined, birthday: d.birthday === undefined ? undefined : d.birthday || null } });
   }, ["/admin/customers"]);
+}
+
+/** Add or remove points by hand (goodwill, corrections). Positive adds, negative removes. */
+export async function adjustPoints(input: unknown) {
+  return guard(async (staffId) => {
+    const d = z.object({ id: z.string(), points: z.coerce.number().int().refine((v) => v !== 0, "Enter points to add or remove"), note: str(120).min(2, "Say why") }).parse(input);
+    return db.$transaction(async (tx) => {
+      if (d.points > 0) await credit(tx, d.id, d.points, "ADJUST", { note: `${d.note} (by staff)` });
+      else await debit(tx, d.id, -d.points, "ADJUST", { note: `${d.note} (by staff)`, partial: true });
+      void staffId;
+    });
+  }, ["/admin/customers"]);
+}
+
+export async function saveReward(input: unknown) {
+  return guard(async () => {
+    const d = z.object({ id: z.string().optional(), name: str(60).min(2), description: str(120).optional(), points: z.coerce.number().int().min(1), productId: z.string(), variantId: optId, sortOrder: z.coerce.number().int(), active: bool }).parse(input);
+    const data = { name: d.name, description: d.description || null, points: d.points, productId: d.productId, variantId: d.variantId, sortOrder: d.sortOrder, active: d.active };
+    return d.id ? db.rewardItem.update({ where: { id: d.id }, data }) : db.rewardItem.create({ data });
+  }, ["/admin/customers", "/rewards", "/"]);
 }
 
 export async function savePromo(input: unknown) {
@@ -318,4 +356,40 @@ export async function saveSettings(key: SettingKey, value: unknown) {
     const merged = { ...DEFAULTS[key], ...(value as object) };
     await setSetting(key, merged as never);
   }, ["/admin/settings", "/admin/receipt", "/", "/menu", "/pos"]);
+}
+
+// ───────── Banners & photos ─────────
+export async function saveBanner(input: unknown) {
+  return guard(async () => {
+    const d = z.object({ id: z.string().optional(), title: str(60).min(2), subtitle: str(140).optional(), link: str(200).min(1), cta: str(30).min(1), theme: z.enum(["dark", "red", "cream"]), imageId: optId, sortOrder: z.coerce.number().int(), active: bool }).parse(input);
+    const { id, ...data } = d;
+    return id ? db.banner.update({ where: { id }, data: { ...data, subtitle: data.subtitle || null } }) : db.banner.create({ data: { ...data, subtitle: data.subtitle || null } });
+  }, ["/admin/banners", "/"]);
+}
+export async function deleteBanner(id: string) {
+  return guard(() => db.banner.delete({ where: { id } }), ["/admin/banners", "/"]);
+}
+
+/** Upload a photo (from a FormData "file"). target: product | category | banner */
+export async function uploadPhoto(form: FormData) {
+  return guard(async () => {
+    const file = form.get("file");
+    const target = String(form.get("target") ?? "");
+    const id = String(form.get("id") ?? "");
+    if (!(file instanceof File) || file.size === 0) throw new Error("Choose a photo");
+    if (file.size > 12 * 1024 * 1024) throw new Error("Photo is too large (max 12 MB)");
+    if (!/^image\//.test(file.type)) throw new Error("That file isn't an image");
+    const img = await saveImage(Buffer.from(await file.arrayBuffer()), { square: target === "product" || target === "category", maxWidth: 1800 });
+    if (target === "product" && id) await db.product.update({ where: { id }, data: { image: img.url } });
+    if (target === "category" && id) await db.category.update({ where: { id }, data: { imageId: img.id } });
+    if (target === "banner" && id) await db.banner.update({ where: { id }, data: { imageId: img.id } });
+    return img;
+  }, ["/admin/menu", "/admin/banners", "/", "/menu"]);
+}
+export async function clearPhoto(target: "product" | "category" | "banner", id: string) {
+  return guard(async () => {
+    if (target === "product") await db.product.update({ where: { id }, data: { image: null } });
+    if (target === "category") await db.category.update({ where: { id }, data: { imageId: null } });
+    if (target === "banner") await db.banner.update({ where: { id }, data: { imageId: null } });
+  }, ["/admin/menu", "/admin/banners", "/", "/menu"]);
 }

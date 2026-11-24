@@ -9,7 +9,7 @@ export default async function ReceiptPage() {
   return (
     <div>
       <PageHeader title="Receipt designer" sub="What you see here is what the 80mm Bluetooth printer prints. Connect the printer on this device to test." />
-      <ReceiptDesigner initial={s.receipt} shop={s.shop} stampsRequired={s.loyalty.stampsRequired} />
+      <ReceiptDesigner initial={s.receipt} shop={s.shop} pointName={s.rewards.pointName} />
     </div>
   );
 }

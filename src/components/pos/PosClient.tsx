@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type BuilderInitial, PizzaBuilder } from "@/components/builder/PizzaBuilder";
 import { ItemArt } from "@/components/ItemArt";
+import { ComboPicker } from "@/components/store/ComboModal";
 import { PizzaArt } from "@/components/PizzaArt";
 import { type PrintConfig, PrinterControl, usePrinter } from "@/components/staff/printing";
 import { beep, Keypad, Modal, useToasts } from "@/components/staff/ui";
@@ -16,8 +17,8 @@ import { PayModal } from "./PayModal";
 import { ShiftModal, type ShiftSummary } from "./ShiftModal";
 
 type Mode = "TAKEAWAY" | "DINE_IN" | "DELIVERY" | "UBER" | "PICKME";
-type Quote = { subtotal: number; promoDiscount: number; promoError?: string; loyaltyAvailable: boolean; loyaltyDiscount: number; manualDiscount: number; discount: number; deliveryFee: number; total: number; error?: string };
-type Cust = { id: string; name: string | null; phone: string; stamps: number; totalOrders: number } | null;
+type Quote = { subtotal: number; promoDiscount: number; promoError?: string; manualDiscount: number; discount: number; deliveryFee: number; total: number; pointsNeeded: number; pointsBalance: number | null; pointsEarnable: number; error?: string };
+type Cust = { id: string; name: string | null; phone: string; points: number; totalOrders: number; birthday?: string | null } | null;
 
 const MODES: { id: Mode; label: string; icon: string }[] = [
   { id: "TAKEAWAY", label: "Takeaway", icon: "🛍️" },
@@ -57,7 +58,8 @@ export function PosClient({
   const [phone, setPhone] = useState("");
   const [cust, setCust] = useState<Cust>(null);
   const [custName, setCustName] = useState("");
-  const [redeem, setRedeem] = useState(false);
+  const [rewardsOpen, setRewardsOpen] = useState(false);
+  const [combo, setCombo] = useState<{ productId: string; editKey?: string; line?: CartLine } | null>(null);
   const [promo, setPromo] = useState("");
   const [discount, setDiscount] = useState<{ amount: number; note: string; pin?: string } | null>(null);
   const [note, setNote] = useState("");
@@ -125,12 +127,12 @@ export function PosClient({
       const r = await fetch("/api/pos/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lines, channel, type, zoneId, customerPhone: cust ? phone : null, promoCode: promo || null, redeemLoyalty: redeem, manualDiscount: discount?.amount ?? null }),
+        body: JSON.stringify({ lines, channel, type, zoneId, customerPhone: cust ? phone : null, promoCode: promo || null, manualDiscount: discount?.amount ?? null }),
       });
       if (r.ok) setQuote(await r.json());
     }, 200);
     return () => clearTimeout(t);
-  }, [lines, channel, type, zoneId, cust, phone, promo, redeem, discount]);
+  }, [lines, channel, type, zoneId, cust, phone, promo, discount]);
 
   const lookup = async (p: string) => {
     if (p.replace(/\D/g, "").length < 9) return setCust(null);
@@ -155,7 +157,6 @@ export function PosClient({
     setPhone("");
     setCust(null);
     setCustName("");
-    setRedeem(false);
     setPromo("");
     setDiscount(null);
     setNote("");
@@ -179,7 +180,6 @@ export function PosClient({
         address: type === "DELIVERY" ? address : null,
         tableId: type === "DINE_IN" ? tableId || null : null,
         promoCode: promo || null,
-        redeemLoyalty: redeem,
         manualDiscount: discount ? { amount: discount.amount, note: discount.note } : null,
         approvalPin: discount?.pin ?? null,
         payment: channel === "POS" ? payment : null,
@@ -216,7 +216,7 @@ export function PosClient({
 
   const products = catalog.products.filter((p) => p.categoryId === cat);
   const canCharge = lines.length > 0 && priced.every((p) => p.valid) && !quote?.error && (type !== "DELIVERY" || channel !== "POS" || (address.trim() && phone));
-  const reward = loyaltyEnabled && quote?.loyaltyAvailable;
+  const pointsLeft = (cust?.points ?? 0) - priced.reduce((s, p) => s + p.points, 0);
   const count = lines.reduce((s, l) => s + l.quantity, 0);
 
   const TicketPanel = (
@@ -245,16 +245,13 @@ export function PosClient({
           <input className="input" inputMode="tel" placeholder="Customer phone (stamps)" value={phone} onChange={(e) => { setPhone(e.target.value); void lookup(e.target.value); }} />
           <input className="input" placeholder="Name" value={custName} onChange={(e) => setCustName(e.target.value)} />
         </div>
-        {cust && (
+        {cust && loyaltyEnabled && (
           <div className="flex items-center justify-between rounded-lg bg-cream-100 px-3 py-2">
-            <span>⭐ {cust.stamps} stamps · {cust.totalOrders} orders</span>
-            {reward && (
-              <label className="flex items-center gap-2 font-bold text-tomato">
-                <input type="checkbox" checked={redeem} onChange={(e) => setRedeem(e.target.checked)} className="h-4 w-4 accent-tomato" /> Free pizza!
-              </label>
-            )}
+            <span>⭐ <b>{cust.points.toLocaleString()}</b> pts · {cust.totalOrders} orders{quote?.pointsEarnable ? ` · earns +${quote.pointsEarnable}` : ""}</span>
+            <button onClick={() => setRewardsOpen(true)} className="rounded-md bg-char px-2.5 py-1 text-xs font-bold text-white">Use points</button>
           </div>
         )}
+        {phone.replace(/\D/g, "").length >= 9 && !cust && <p className="text-xs text-char-400">New customer — points start with this order.</p>}
         {mode === "DELIVERY" && (
           <div className="flex gap-2">
             <select className="input w-40" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
@@ -274,9 +271,9 @@ export function PosClient({
           <div key={p.line.key} className="flex items-start gap-2 border-b border-char-50 px-3 py-2">
             <button
               className="min-w-0 flex-1 text-left"
-              onClick={() => p.line.kind === "PIZZA" && setBuilder({ initial: { productId: p.line.productId, sizeId: p.line.sizeId, crustId: p.line.crustId, toppings: p.line.toppings, quantity: p.line.quantity, note: p.line.note }, editKey: p.line.key })}
+              onClick={() => (p.line.rewardId ? null : p.line.kind === "PIZZA" ? setBuilder({ initial: { productId: p.line.productId, sizeId: p.line.sizeId, crustId: p.line.crustId, toppings: p.line.toppings, quantity: p.line.quantity, note: p.line.note }, editKey: p.line.key }) : p.line.kind === "COMBO" ? setCombo({ productId: p.line.productId!, editKey: p.line.key, line: p.line }) : null)}
             >
-              <p className="font-bold leading-tight">{p.name} {p.sizeName && <span className="font-normal text-char-400">· {p.sizeName}</span>}</p>
+              <p className="font-bold leading-tight">{p.line.rewardId && "🎁 "}{p.name} {p.sizeName && <span className="font-normal text-char-400">· {p.sizeName}</span>}</p>
               {p.summary && <p className="text-xs text-tomato-700">{p.summary}</p>}
               {p.line.note && <p className="text-xs italic text-char-400">“{p.line.note}”</p>}
               {!p.valid && <p className="text-xs font-bold text-tomato">{p.error}</p>}
@@ -286,7 +283,7 @@ export function PosClient({
               <span className="w-6 text-center font-bold">{p.line.quantity}</span>
               <button className="h-8 w-8 font-bold" onClick={() => setQty(p.line.key, p.line.quantity + 1)}>+</button>
             </div>
-            <span className="w-20 text-right font-bold">{money(p.lineTotal).replace("Rs. ", "")}</span>
+            <span className="w-20 text-right font-bold">{p.line.rewardId ? <span className="text-basil">FREE</span> : money(p.lineTotal).replace("Rs. ", "")}</span>
           </div>
         ))}
       </div>
@@ -304,6 +301,7 @@ export function PosClient({
           <div className="flex justify-between"><span>Subtotal</span><span>{money(quote?.subtotal ?? priced.reduce((s, p) => s + p.lineTotal, 0))}</span></div>
           {!!quote?.discount && <div className="flex justify-between text-basil"><span>Discounts</span><span>−{money(quote.discount)}</span></div>}
           {!!quote?.deliveryFee && <div className="flex justify-between"><span>Delivery</span><span>{money(quote.deliveryFee)}</span></div>}
+          {!!quote?.pointsNeeded && <div className="flex justify-between text-basil"><span>Points used</span><span>{quote.pointsNeeded.toLocaleString()} pts</span></div>}
         </div>
         <div className="mt-3 grid grid-cols-[auto_1fr] gap-2">
           {channel === "POS" && (
@@ -380,7 +378,15 @@ export function PosClient({
           ) : (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
               {products.map((p) =>
-                p.kind === "PIZZA" ? (
+                p.kind === "COMBO" ? (
+                  <button key={p.id} onClick={() => setCombo({ productId: p.id })} className="card flex flex-col overflow-hidden text-left active:scale-95">
+                    <div className="h-24 overflow-hidden bg-tomato">{p.image ? <img src={p.image} alt="" className="h-full w-full object-cover" /> : <ItemArt art="deal" className="mx-auto h-24 w-24" />}</div>
+                    <div className="p-2">
+                      <p className="text-sm font-bold leading-tight">{p.name}</p>
+                      <p className="text-xs text-char-400">{money(p.variants[0]?.price ?? 0)} · tap to choose</p>
+                    </div>
+                  </button>
+                ) : p.kind === "PIZZA" ? (
                   <div key={p.id} className="card flex flex-col overflow-hidden">
                     <button onClick={() => setBuilder({ initial: { productId: p.id, sizeId: p.variants[0]?.sizeId } })} className="relative bg-char p-2" title="Customise">
                       <PizzaArt catalog={catalog} sizeId={p.variants[0]?.sizeId} toppings={p.toppings} board={false} animate={false} scaleBySize={false} className="mx-auto h-24 w-24" />
@@ -455,6 +461,38 @@ export function PosClient({
             }}
           />
         )}
+      </Modal>
+
+      <ComboPicker
+        catalog={catalog}
+        open={!!combo}
+        productId={combo?.productId}
+        initial={combo?.line}
+        onClose={() => setCombo(null)}
+        confirmLabel={combo?.editKey ? "Update" : "Add"}
+        onConfirm={(l) => {
+          if (combo?.editKey) setLines((ls) => ls.map((x) => (x.key === combo.editKey ? { ...l, key: lineKey(l) + "#" + Math.random().toString(36).slice(2, 7) } : x)));
+          else addLine(l);
+          setCombo(null);
+        }}
+      />
+      <Modal open={rewardsOpen} onClose={() => setRewardsOpen(false)} title={`Use points · ${Math.max(0, pointsLeft).toLocaleString()} available`}>
+        <ul className="space-y-2">
+          {catalog.rewards.map((r) => {
+            const ok = pointsLeft >= r.points;
+            const prod = catalog.products.find((x) => x.id === r.productId);
+            return (
+              <li key={r.id} className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${ok ? "border-char-200" : "border-char-100 opacity-50"}`}>
+                <div>
+                  <p className="font-bold">{r.name}</p>
+                  <p className="text-xs text-char-400">{r.points.toLocaleString()} points</p>
+                </div>
+                <button disabled={!ok} className="btn-primary btn-sm" onClick={() => { setLines((ls) => [...ls, { kind: prod?.kind === "PIZZA" ? "PIZZA" : "ITEM", productId: r.productId, rewardId: r.id, quantity: 1, key: `reward-${r.id}-${Math.random().toString(36).slice(2, 6)}` }]); setRewardsOpen(false); }}>Claim</button>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="mt-3 text-xs text-char-400">Points come off when the order is saved, and go back if it&apos;s voided.</p>
       </Modal>
 
       {/* discount */}

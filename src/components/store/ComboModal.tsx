@@ -3,24 +3,21 @@ import { useEffect, useState } from "react";
 import { ItemArt } from "@/components/ItemArt";
 import { PizzaArt } from "@/components/PizzaArt";
 import { money, priceLine } from "@/lib/pricing";
-import type { CartLine, ComboPick } from "@/lib/types";
+import type { CartLine, Catalog, ComboPick } from "@/lib/types";
 import { ToppingRow } from "./CustomiseModal";
 import { useStore } from "./StoreProvider";
 import { ComboArt, Icon, Sheet, Stepper } from "./ui";
 
-export function ComboModal() {
-  const s = useStore();
-  const c = s.combo;
-  const cat = s.catalog;
-  const editing = c?.editKey ? s.lines.find((l) => l.key === c.editKey) : undefined;
-  const combo = cat.products.find((p) => p.id === c?.productId && p.kind === "COMBO");
+/** Reusable combo chooser (website + POS) */
+export function ComboPicker({ catalog: cat, open, productId, initial, onClose, onConfirm, confirmLabel }: { catalog: Catalog; open: boolean; productId?: string; initial?: CartLine; onClose: () => void; onConfirm: (line: Omit<CartLine, "key">) => void; confirmLabel: string }) {
+  const combo = cat.products.find((p) => p.id === productId && p.kind === "COMBO");
   const [picks, setPicks] = useState<ComboPick[]>([]);
   const [qty, setQty] = useState(1);
   const [edit, setEdit] = useState<number | null>(null);
 
   useEffect(() => {
     if (!combo) return;
-    const src = editing ?? c?.line;
+    const src = initial;
     if (src?.picks) setPicks(src.picks);
     else {
       // preselect the first (cheapest) option for every unit
@@ -35,16 +32,16 @@ export function ComboModal() {
     }
     setQty(src?.quantity ?? 1);
     setEdit(null);
-  }, [c]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, productId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!c || !combo) return null;
+  if (!open || !combo) return null;
   const line: Omit<CartLine, "key"> = { kind: "COMBO", productId: combo.id, picks, quantity: qty };
   const priced = priceLine(cat, { ...line, key: "x" });
   const setPick = (idx: number, p: ComboPick) => setPicks((ps) => ps.map((x, i) => (i === idx ? p : x)));
 
   let idx = 0;
   return (
-    <Sheet open={!!c} onClose={() => s.openCombo(null)} wide flush label={`Choose items for ${combo.name}`}>
+    <Sheet open={open} onClose={onClose} wide flush label={`Choose items for ${combo.name}`}>
       <div className="flex max-h-[94dvh] flex-col overflow-y-auto md:grid md:max-h-[86vh] md:grid-cols-[0.9fr_1.1fr] md:overflow-hidden">
         <div className="bg-[#F7F5F1] md:overflow-y-auto">
           <div className="h-[30dvh] md:aspect-square md:h-auto">
@@ -122,20 +119,37 @@ export function ComboModal() {
             <Stepper value={qty} min={1} max={10} onChange={setQty} />
             <button
               disabled={!priced.valid}
-              onClick={() =>
-                s.requireMode(() => {
-                  if (editing) s.replace(editing.key, line);
-                  else s.add(line);
-                  s.openCombo(null);
-                })
-              }
+              onClick={() => onConfirm(line)}
               className="btn-primary h-14 flex-1 text-lg"
             >
-              {editing ? "Update" : "Add To Cart"} {money(priced.unitPrice * qty)}
+              {confirmLabel} {money(priced.unitPrice * qty)}
             </button>
           </div>
         </div>
       </div>
     </Sheet>
+  );
+}
+
+export function ComboModal() {
+  const s = useStore();
+  const c = s.combo;
+  const editing = c?.editKey ? s.lines.find((l) => l.key === c.editKey) : undefined;
+  return (
+    <ComboPicker
+      catalog={s.catalog}
+      open={!!c}
+      productId={c?.productId}
+      initial={editing ?? c?.line}
+      onClose={() => s.openCombo(null)}
+      confirmLabel={editing ? "Update" : "Add To Cart"}
+      onConfirm={(line) =>
+        s.requireMode(() => {
+          if (editing) s.replace(editing.key, line);
+          else s.add(line);
+          s.openCombo(null);
+        })
+      }
+    />
   );
 }

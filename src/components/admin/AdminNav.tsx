@@ -15,6 +15,7 @@ const NAV = [
   { href: "/admin/builder", label: "Pizza builder & recipes", icon: "🧪" },
   { href: "/admin/customers", label: "Customers & rewards", icon: "⭐" },
   { href: "/admin/promos", label: "Promo codes", icon: "🏷️" },
+  { href: "/admin/banners", label: "Homepage banners", icon: "🖼️" },
   { href: "/admin/delivery", label: "Delivery & tables", icon: "🛵" },
   { href: "/admin/staff", label: "Staff & shifts", icon: "👥" },
   { href: "/admin/receipt", label: "Receipt designer", icon: "🖨️" },

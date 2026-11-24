@@ -2,5 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   eslint: { ignoreDuringBuilds: true },
+  experimental: { serverActions: { bodySizeLimit: "15mb" } },
+  async headers() {
+    return [{ source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }, { key: "Service-Worker-Allowed", value: "/" }] }];
+  },
 };
 export default nextConfig;

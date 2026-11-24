@@ -4,21 +4,25 @@ import { useState, useTransition } from "react";
 import { ItemArt } from "@/components/ItemArt";
 import { PizzaArt, ToppingIcon } from "@/components/PizzaArt";
 import { saveProduct } from "@/lib/actions/admin";
+import { PhotoUpload } from "./PhotoUpload";
 import type { Catalog } from "@/lib/types";
 
 type Ing = { id: string; name: string; unit: string; costPerUnit: number; isPackaging: boolean };
 type Variant = { id?: string; name: string; sizeId: string; price: number; royalty: number; charity: number; active: boolean; recipe: { ingredientId: string; quantity: number }[] };
-type P = { id?: string; name: string; description: string; categoryId: string; kind: "PIZZA" | "ITEM"; art: string; image: string; tags: string[]; featured: boolean; active: boolean; sortOrder: number; variants: Variant[]; toppings: Record<string, number> };
+type Opt = { productId: string; sizeId: string | null; variantId: string | null; upcharge: number };
+type Slot = { label: string; quantity: number; options: Opt[] };
+type P = { id?: string; name: string; description: string; categoryId: string; kind: "PIZZA" | "ITEM" | "COMBO"; isVeg: boolean; art: string; image: string; tags: string[]; featured: boolean; active: boolean; sortOrder: number; variants: Variant[]; toppings: Record<string, number>; slots: Slot[] };
+type Choice = { id: string; name: string; kind: string; variants: { id: string; name: string; sizeId: string | null; price: number }[] };
 
 const ARTS = ["juice:#F25C54", "juice:#F7C548", "juice:#FFA62B", "juice:#A7C957", "mojito:#B8E986", "mojito:#FF5D73", "mojito:#3AB0FF", "panini", "lasagna", "garlicbread", "water"];
 
-export function ProductEditor({ catalog, categories, ingredients, sizes, dough, toppingIngredient, initial }: {
-  catalog: Catalog; categories: { id: string; name: string }[]; ingredients: Ing[];
+export function ProductEditor({ catalog, categories, ingredients, sizes, dough, toppingIngredient, initial, choices }: {
+  catalog: Catalog; categories: { id: string; name: string }[]; ingredients: Ing[]; choices: Choice[];
   sizes: { id: string; name: string; doughGrams: number; boxId: string | null; royalty: number; charity: number }[];
   dough: { id: string | null }; toppingIngredient: Record<string, string | null>; initial: P | null;
 }) {
   const [p, setP] = useState<P>(
-    initial ?? { name: "", description: "", categoryId: categories[0]?.id ?? "", kind: "ITEM", art: "juice:#F25C54", image: "", tags: [], featured: false, active: true, sortOrder: 0, variants: [{ name: "Regular", sizeId: "", price: 0, royalty: 0, charity: 0, active: true, recipe: [] }], toppings: {} },
+    initial ?? { name: "", description: "", categoryId: categories[0]?.id ?? "", kind: "ITEM", isVeg: false, art: "juice:#F25C54", image: "", tags: [], featured: false, active: true, sortOrder: 0, variants: [{ name: "Regular", sizeId: "", price: 0, royalty: 0, charity: 0, active: true, recipe: [] }], toppings: {}, slots: [] },
   );
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -59,6 +63,7 @@ export function ProductEditor({ catalog, categories, ingredients, sizes, dough, 
             <select className="input" value={p.kind} onChange={(e) => setP({ ...p, kind: e.target.value as P["kind"] })}>
               <option value="PIZZA">Pizza (uses builder, sizes & toppings)</option>
               <option value="ITEM">Item (own recipe)</option>
+              <option value="COMBO">Combo deal (customer picks items)</option>
             </select>
           </label>
           <label><span className="label">Tags (comma separated)</span><input className="input" value={p.tags.join(", ")} placeholder="bestseller, spicy, veg, new" onChange={(e) => setP({ ...p, tags: e.target.value.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean) })} /></label>
@@ -79,9 +84,62 @@ export function ProductEditor({ catalog, categories, ingredients, sizes, dough, 
           <div className="flex gap-6 md:col-span-2">
             <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" className="accent-tomato" checked={p.featured} onChange={(e) => setP({ ...p, featured: e.target.checked })} /> Featured on homepage</label>
             <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" className="accent-tomato" checked={p.active} onChange={(e) => setP({ ...p, active: e.target.checked })} /> Visible</label>
+            {p.kind !== "COMBO" && <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" className="accent-tomato" checked={p.isVeg} onChange={(e) => setP({ ...p, isVeg: e.target.checked })} /> Vegetarian</label>}
           </div>
         </section>
 
+        {p.id && (
+          <section className="card p-4">
+            <PhotoUpload target="product" id={p.id} current={p.image || null} label="Menu photo (square works best; leave empty to use the drawing)" />
+          </section>
+        )}
+        {!p.id && <p className="rounded-xl bg-cream-100 p-3 text-sm">Save the product first, then you can upload its photo.</p>}
+
+        {p.kind === "COMBO" && (
+          <section className="card p-4">
+            <div className="mb-3 flex items-end gap-3">
+              <label className="w-40"><span className="label">Deal price (Rs)</span><input className="input" type="number" value={p.variants[0]?.price ?? 0} onChange={(e) => setP({ ...p, variants: [{ ...(p.variants[0] ?? { name: "Deal", sizeId: "", royalty: 0, charity: 0, active: true, recipe: [] }), name: "Deal", price: Number(e.target.value) }] })} /></label>
+              <p className="pb-2 text-xs text-char-400">Stock, food cost, royalty and charity come from the items the customer picks.</p>
+            </div>
+            <p className="mb-2 font-bold">Choices in this combo</p>
+            <div className="space-y-3">
+              {p.slots.map((sl, si) => (
+                <div key={si} className="rounded-lg border border-char-100 p-3">
+                  <div className="grid gap-2 md:grid-cols-[1fr_100px_auto]">
+                    <label><span className="label">Shown as</span><input className="input" value={sl.label} placeholder="Your 2-person pizza" onChange={(e) => setP({ ...p, slots: p.slots.map((x, i) => (i === si ? { ...x, label: e.target.value } : x)) })} /></label>
+                    <label><span className="label">How many</span><input className="input" type="number" min={1} value={sl.quantity} onChange={(e) => setP({ ...p, slots: p.slots.map((x, i) => (i === si ? { ...x, quantity: Number(e.target.value) } : x)) })} /></label>
+                    <button type="button" className="self-end pb-2 text-sm text-tomato" onClick={() => setP({ ...p, slots: p.slots.filter((_, i) => i !== si) })}>Remove choice</button>
+                  </div>
+                  <p className="mt-2 text-xs font-bold uppercase text-char-400">Options the customer can pick (top-up added for pricier options)</p>
+                  {sl.options.map((o, oi) => {
+                    const ch = choices.find((c) => c.id === o.productId);
+                    const setO = (patch: Partial<Opt>) => setP({ ...p, slots: p.slots.map((x, i) => (i === si ? { ...x, options: x.options.map((y, k) => (k === oi ? { ...y, ...patch } : y)) } : x)) });
+                    return (
+                      <div key={oi} className="mt-1 grid items-center gap-2 md:grid-cols-[1fr_180px_110px_auto]">
+                        <select className="input" value={o.productId} onChange={(e) => { const c = choices.find((x) => x.id === e.target.value); setO({ productId: e.target.value, sizeId: c?.kind === "PIZZA" ? c.variants[0]?.sizeId ?? null : null, variantId: c?.kind === "PIZZA" ? null : c?.variants[0]?.id ?? null }); }}>
+                          {choices.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        {ch && ch.variants.length > 1 ? (
+                          <select className="input" value={(ch.kind === "PIZZA" ? o.sizeId : o.variantId) ?? ""} onChange={(e) => setO(ch.kind === "PIZZA" ? { sizeId: e.target.value } : { variantId: e.target.value })}>
+                            {ch.variants.map((v) => <option key={v.id} value={(ch.kind === "PIZZA" ? v.sizeId : v.id) ?? ""}>{v.name} · Rs {v.price}</option>)}
+                          </select>
+                        ) : (
+                          <span className="text-xs text-char-400">{ch?.variants[0] ? `Rs ${ch.variants[0].price}` : ""}</span>
+                        )}
+                        <label className="flex items-center gap-1 text-xs">+Rs<input className="input" type="number" value={o.upcharge} onChange={(e) => setO({ upcharge: Number(e.target.value) })} /></label>
+                        <button type="button" className="text-tomato" onClick={() => setP({ ...p, slots: p.slots.map((x, i) => (i === si ? { ...x, options: x.options.filter((_, k) => k !== oi) } : x)) })}>✕</button>
+                      </div>
+                    );
+                  })}
+                  <button type="button" className="mt-2 text-sm font-bold text-tomato" onClick={() => { const c = choices[0]; setP({ ...p, slots: p.slots.map((x, i) => (i === si ? { ...x, options: [...x.options, { productId: c.id, sizeId: c.kind === "PIZZA" ? c.variants[0]?.sizeId ?? null : null, variantId: c.kind === "PIZZA" ? null : c.variants[0]?.id ?? null, upcharge: 0 }] } : x)) }); }}>+ option</button>
+                </div>
+              ))}
+            </div>
+            <button type="button" className="btn-ghost btn-sm mt-3" onClick={() => setP({ ...p, slots: [...p.slots, { label: "", quantity: 1, options: [] }] })}>+ Choice</button>
+          </section>
+        )}
+
+        {p.kind !== "COMBO" && (
         <section className="card p-4">
           <p className="mb-2 font-bold">{p.kind === "PIZZA" ? "Sizes & prices" : "Variants, prices & recipe"}</p>
           <div className="space-y-3">
@@ -138,6 +196,7 @@ export function ProductEditor({ catalog, categories, ingredients, sizes, dough, 
           </div>
           <button type="button" className="btn-ghost btn-sm mt-3" onClick={() => setP({ ...p, variants: [...p.variants, { name: p.kind === "PIZZA" ? "" : "Large", sizeId: "", price: 0, royalty: 0, charity: 0, active: true, recipe: [] }] })}>+ {p.kind === "PIZZA" ? "Size" : "Variant"}</button>
         </section>
+        )}
       </div>
 
       <aside className="space-y-4 xl:sticky xl:top-20 xl:self-start">
@@ -172,7 +231,7 @@ export function ProductEditor({ catalog, categories, ingredients, sizes, dough, 
           onClick={() =>
             start(async () => {
               setErr(null);
-              const r = await saveProduct({ ...p, variants: p.variants.map((v) => ({ ...v, sizeId: v.sizeId || null })) });
+              const r = await saveProduct({ ...p, variants: (p.kind === "COMBO" ? p.variants.slice(0, 1).map((v) => ({ ...v, name: "Deal", recipe: [] })) : p.variants).map((v) => ({ ...v, sizeId: v.sizeId || null })), slots: p.kind === "COMBO" ? p.slots : undefined });
               if (!r.ok) return setErr(r.error);
               router.push("/admin/menu");
               router.refresh();
