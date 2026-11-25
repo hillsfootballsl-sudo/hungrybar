@@ -8,7 +8,7 @@ import { Icon, ProductPhoto, VegMark } from "./ui";
 function Select({ label, value, onChange, options, disabled }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; disabled?: boolean }) {
   return (
     <label className="relative block min-w-0 flex-1">
-      <span className="absolute -top-2 left-3 bg-white px-1 text-[10px] font-bold text-char-500">{label}</span>
+      <span className="absolute -top-2 left-3 bg-white px-1 text-xs font-bold leading-none text-char-500">{label}</span>
       <select disabled={disabled} value={value} onChange={(e) => onChange(e.target.value)} className="h-11 w-full appearance-none truncate rounded-xl border border-char-200 bg-white pl-3 pr-8 text-sm font-bold outline-none focus:border-char disabled:bg-char-50 disabled:text-char-500">
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -67,9 +67,9 @@ export function ProductCard({ p }: { p: CatProduct }) {
           <Icon name="heart" fill={fav} className={`h-5 w-5 ${fav ? "text-tomato" : "text-char-300"}`} />
         </button>
         {p.tags.filter((t) => ["bestseller", "new", "spicy", "family", "save"].includes(t)).slice(0, 1).map((t) => (
-          <span key={t} className="absolute left-3 top-3 rounded-full bg-mustard px-2.5 py-1 text-[11px] font-extrabold uppercase text-char">{t === "save" ? "Best value" : t}</span>
+          <span key={t} className="absolute left-3 top-3 rounded-full bg-mustard px-2.5 py-1 text-xs font-extrabold uppercase text-char">{t === "save" ? "Best value" : t}</span>
         ))}
-        {save > 0 && <span className="absolute left-3 top-3 rounded-full bg-tomato px-2.5 py-1 text-[11px] font-extrabold uppercase text-white">Save {money(save)}</span>}
+        {save > 0 && <span className="absolute left-3 top-3 rounded-full bg-tomato px-2.5 py-1 text-xs font-extrabold uppercase text-white">Save {money(save)}</span>}
         {p.kind === "PIZZA" && (
           <button onClick={() => s.openCustomise({ productId: p.id, sizeId })} className="absolute bottom-3 right-3 rounded-full bg-white px-4 py-2 text-sm font-bold shadow-lg hover:bg-char hover:text-white">Customise</button>
         )}
@@ -80,7 +80,7 @@ export function ProductCard({ p }: { p: CatProduct }) {
           <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
             {p.kind !== "COMBO" && <VegMark veg={p.isVeg} />}
             {p.kind === "PIZZA" && (
-              <button onClick={() => s.openCustomise({ productId: p.id, sizeId })} aria-label="See ingredients" className="text-char-400 hover:text-char">
+              <button onClick={() => s.openCustomise({ productId: p.id, sizeId })} aria-label="See ingredients" className="-m-2.5 grid h-10 w-10 place-items-center text-char-400 hover:text-char">
                 <Icon name="info" className="h-5 w-5" />
               </button>
             )}
@@ -130,7 +130,7 @@ export function BuildYourOwnCard() {
     <article className="card flex flex-col overflow-hidden border-2 border-dashed border-tomato/40">
       <button onClick={() => s.openCustomise({})} className="relative aspect-[4/3] overflow-hidden">
         {pizza && <ProductPhoto product={{ ...pizza, image: null, toppings: demo }} catalog={cat} sizeId={round?.id} live />}
-        <span className="absolute left-3 top-3 rounded-full bg-tomato px-2.5 py-1 text-[11px] font-extrabold uppercase text-white">Live builder</span>
+        <span className="absolute left-3 top-3 rounded-full bg-tomato px-2.5 py-1 text-xs font-extrabold uppercase text-white">Live builder</span>
       </button>
       <div className="flex flex-1 flex-col p-4">
         <h3 className="text-lg font-extrabold uppercase leading-tight">Build Your Own</h3>

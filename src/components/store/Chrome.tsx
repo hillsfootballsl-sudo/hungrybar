@@ -43,39 +43,39 @@ export function Header() {
   return (
     <>
       <header className="sticky z-50 border-b border-char-100 bg-white/95 backdrop-blur" style={{ top: 0 }}>
-        <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-3 px-3 md:h-[76px] md:px-6">
-          <button onClick={() => setDrawer(true)} className="grid h-11 w-11 place-items-center rounded-full hover:bg-char-50" aria-label="Open menu">
+        <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-2 px-2 sm:gap-3 sm:px-3 md:px-6 xl:h-[76px]">
+          <button onClick={() => setDrawer(true)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-char-50" aria-label="Open menu">
             <Icon name="menu" className="h-6 w-6" />
           </button>
-          <Link href="/" className="flex items-center gap-2" aria-label="Hungry Bar home">
-            <Image src="/brand/logo.png" alt="" width={48} height={48} className="h-10 w-10 md:h-12 md:w-12" priority />
-            <span className="font-display text-[22px] leading-none text-tomato md:text-[26px]">HUNGRY<span className="text-char">BAR</span></span>
+          <Link href="/" className="flex min-w-0 shrink items-center gap-1.5 sm:gap-2" aria-label="Hungry Bar home">
+            <Image src="/brand/logo.png" alt="" width={48} height={48} className="h-9 w-9 shrink-0 sm:h-10 sm:w-10 xl:h-12 xl:w-12" priority />
+            <span className="whitespace-nowrap font-display text-[18px] leading-none text-tomato min-[380px]:text-[21px] md:text-[24px] xl:text-[26px]">HUNGRY<span className="text-char">BAR</span></span>
           </Link>
-          <div className="mx-auto hidden w-full max-w-[560px] md:block">
+          <div className="mx-auto hidden w-full max-w-[560px] xl:block">
             <LocationPill />
           </div>
-          <div className="ml-auto flex items-center gap-2 md:ml-0">
-            <Link href="/rewards" className="hidden text-[22px] lg:block" aria-label="Hungry Rewards">
+          <div className="ml-auto flex shrink-0 items-center gap-2 xl:ml-0">
+            <Link href="/rewards" className="hidden whitespace-nowrap text-[20px] lg:block xl:text-[22px]" aria-label="Hungry Rewards">
               <RewardsMark />
             </Link>
             {s.me ? (
-              <Link href="/account" className="flex h-11 items-center gap-2 rounded-full bg-char px-3 text-sm font-bold text-white md:px-4">
+              <Link href="/account" className="flex h-11 items-center gap-2 whitespace-nowrap rounded-full bg-char px-3 text-sm font-bold text-white md:px-4">
                 <Icon name="user" className="h-5 w-5" />
-                <span className="hidden sm:inline">{s.me.name?.split(" ")[0] || "Account"}</span>
+                <span className="hidden md:inline">{s.me.name?.split(" ")[0] || "Account"}</span>
                 <span className="whitespace-nowrap rounded-full bg-mustard px-2 py-0.5 text-xs text-char">{s.me.points.toLocaleString()} pts</span>
               </Link>
             ) : (
-              <button onClick={() => s.openLogin()} className="btn-dark btn-sm h-11 px-5 md:px-6">
+              <button onClick={() => s.openLogin()} className="btn-dark btn-sm h-11 whitespace-nowrap px-4 md:px-6">
                 Sign Up
               </button>
             )}
-            <button onClick={() => s.setCartOpen(true)} className="relative hidden h-11 w-11 place-items-center rounded-full hover:bg-char-50 md:grid" aria-label={`Cart, ${s.count} items`}>
+            <button onClick={() => s.setCartOpen(true)} className="relative hidden h-11 w-11 place-items-center rounded-full hover:bg-char-50 lg:grid" aria-label={`Cart, ${s.count} items`}>
               <Icon name="bag" className="h-6 w-6" />
               {s.count > 0 && <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-tomato px-1 text-[11px] font-bold text-white">{s.count}</span>}
             </button>
           </div>
         </div>
-        <div className="px-3 pb-3 md:hidden">
+        <div className="mx-auto max-w-[1400px] px-3 pb-3 md:px-6 xl:hidden">
           <LocationPill />
         </div>
       </header>
@@ -161,18 +161,18 @@ export function MobileNav() {
     ["/rewards", "Rewards", "star"],
   ];
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-char-100 bg-white/95 backdrop-blur safe-bottom md:hidden" aria-label="Quick">
-      <div className="grid h-[62px] grid-cols-5">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-char-100 bg-white/95 backdrop-blur safe-bottom lg:hidden" aria-label="Quick">
+      <div className="mx-auto grid h-[62px] max-w-2xl grid-cols-5">
         {tabs.map(([href, label, icon]) => {
           const active = href === "/" ? path === "/" : path.startsWith(href.split("?")[0]) && (href.includes("deals") ? false : true);
           return (
-            <Link key={label} href={href} className={`flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold ${active ? "text-tomato" : "text-char-500"}`}>
+            <Link key={label} href={href} className={`flex flex-col items-center justify-center gap-0.5 text-xs font-bold ${active ? "text-tomato" : "text-char-500"}`}>
               <Icon name={icon} className="h-[22px] w-[22px]" />
               {label}
             </Link>
           );
         })}
-        <button onClick={() => s.setCartOpen(true)} className="relative flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold text-char-500">
+        <button onClick={() => s.setCartOpen(true)} className="relative flex flex-col items-center justify-center gap-0.5 text-xs font-bold text-char-500">
           <Icon name="bag" className="h-[22px] w-[22px]" />
           Cart
           {s.count > 0 && <span className="absolute right-[22%] top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-tomato px-1 text-[11px] text-white">{s.count}</span>}
@@ -186,7 +186,7 @@ export function Footer() {
   const s = useStore();
   const cats = s.catalog.categories;
   return (
-    <footer className="mt-16 bg-char pb-24 text-white md:pb-0">
+    <footer className="mt-16 bg-char pb-24 text-white lg:pb-0">
       <div className="mx-auto grid grid-cols-1 max-w-6xl gap-10 px-6 py-14 sm:grid-cols-2 md:grid-cols-4">
         <div>
           <h3 className="font-condensed text-2xl text-mustard">Menu</h3>
@@ -236,7 +236,7 @@ export function Toast() {
   const s = useStore();
   if (!s.toast) return null;
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-24 z-[90] flex justify-center md:bottom-8">
+    <div className="pointer-events-none fixed inset-x-0 bottom-24 z-[90] flex justify-center lg:bottom-8">
       <div className="flex items-center gap-2 rounded-full bg-char px-5 py-3 text-sm font-bold text-white shadow-2xl animate-[sheetUp_.2s_ease-out]">
         <Icon name="check" className="h-4 w-4 text-mustard" /> {s.toast}
       </div>

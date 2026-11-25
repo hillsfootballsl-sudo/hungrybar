@@ -87,6 +87,15 @@ export function ComboArt({ product, catalog, className = "" }: { product: CatPro
       ) : photo ? (
         <img src={photo.image!} alt="" className="absolute inset-0 h-full w-full object-cover" />
       ) : null}
+      {!pizza && !photo ? (
+        <div className="absolute inset-0 flex items-center justify-center gap-[4%] px-[8%]">
+          {firsts.slice(0, 3).map((o, k) => (
+            <div key={o.id + k} className="grid aspect-square w-[40%] max-w-[180px] place-items-center rounded-[20%] bg-white/90 shadow-xl" style={{ transform: `rotate(${k % 2 ? 5 : -5}deg)` }}>
+              {o.image ? <img src={o.image} alt="" className="h-full w-full rounded-[20%] object-cover" /> : <ItemArt art={o.art} className="h-[82%] w-[82%]" />}
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="absolute bottom-[6%] right-[4%] flex w-[60%] justify-end gap-[3%]">
         {others.map((o) => (
           <div key={o.id} className="grid aspect-square w-[32%] place-items-center rounded-[18%] bg-white/90 shadow-lg">
@@ -94,6 +103,7 @@ export function ComboArt({ product, catalog, className = "" }: { product: CatPro
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }
@@ -124,7 +134,7 @@ export function Sheet({ open, onClose, children, wide, label, flush }: { open: b
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-char/60 backdrop-blur-[2px] md:items-center md:p-6" onClick={onClose} role="dialog" aria-modal="true" aria-label={label}>
       <div
-        className={`relative max-h-[94dvh] w-full overflow-hidden rounded-t-[28px] bg-white shadow-2xl md:rounded-[28px] ${wide ? "md:max-w-5xl" : "md:max-w-md"} ${flush ? "" : "overflow-y-auto p-5 md:p-7"} animate-[sheetUp_.25s_ease-out] safe-bottom`}
+        className={`relative max-h-[94dvh] w-full overflow-hidden rounded-t-[28px] bg-white shadow-2xl md:rounded-[28px] ${wide ? "md:max-w-2xl lg:max-w-5xl" : "md:max-w-md"} ${flush ? "" : "overflow-y-auto p-5 md:p-7"} animate-[sheetUp_.25s_ease-out] safe-bottom`}
         onClick={(e) => e.stopPropagation()}
       >
         <button onClick={onClose} className="absolute right-3 top-3 z-20 grid h-10 w-10 place-items-center rounded-full bg-white/90 text-char shadow hover:bg-char-50" aria-label="Close">

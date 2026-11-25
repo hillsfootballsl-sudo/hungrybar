@@ -133,7 +133,7 @@ export function CheckoutClient() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-32 pt-6 md:px-6">
-      <Link href="/menu" className="inline-flex items-center gap-1 text-sm font-bold text-char-500"><Icon name="left" className="h-4 w-4" /> Back to menu</Link>
+      <Link href="/menu" className="-ml-1 inline-flex items-center gap-1 px-1 py-2 text-sm font-bold text-char-500"><Icon name="left" className="h-4 w-4" /> Back to menu</Link>
       <h1 className="mt-2 text-3xl font-extrabold md:text-4xl">Checkout</h1>
       {!s.config.accepting && <p className="mt-4 rounded-2xl bg-mustard/30 p-4 font-bold">We&apos;re not taking online orders right now. Please call {s.config.shop.phone}.</p>}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
@@ -160,7 +160,7 @@ export function CheckoutClient() {
             )}
           </Step>
 
-          <Step n={2} title={m.type === "DELIVERY" ? "Delivery address" : m.type === "DINE_IN" ? "Dine-in" : "Pickup"} action={<button onClick={() => s.openLocation()} className="text-sm font-bold text-tomato underline">Change</button>}>
+          <Step n={2} title={m.type === "DELIVERY" ? "Delivery address" : m.type === "DINE_IN" ? "Dine-in" : "Pickup"} action={<button onClick={() => s.openLocation()} className="-my-2 px-1 py-2.5 text-sm font-bold text-tomato underline">Change</button>}>
             {m.type === "DELIVERY" ? (
               <div className="space-y-3">
                 <p className="flex items-center gap-2 rounded-xl bg-char-50 px-3 py-2 text-sm font-bold"><Icon name="bike" className="h-4 w-4 text-tomato" /> {s.zone?.name} · {s.zone?.fee ? money(s.zone.fee) : "FREE delivery"} · ~{s.zone?.eta} min</p>
@@ -190,7 +190,7 @@ export function CheckoutClient() {
             )}
             <div className="mt-4 flex items-center justify-between rounded-xl border border-char-100 px-3 py-2.5 text-sm">
               <span className="flex items-center gap-2 font-bold"><Icon name="clock" className="h-4 w-4" /> {scheduled ? `Scheduled: ${scheduled.toLocaleString("en-GB", { timeZone: "Asia/Colombo", weekday: "short", hour: "numeric", minute: "2-digit", hour12: true })}` : "As soon as possible"}</span>
-              <button onClick={() => s.openLocation()} className="font-bold text-tomato underline">Change</button>
+              <button onClick={() => s.openLocation()} className="-my-2 px-1 py-2.5 font-bold text-tomato underline">Change</button>
             </div>
             {closedNow.length > 0 && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-mustard/25 p-3 text-sm font-bold">
@@ -222,7 +222,7 @@ export function CheckoutClient() {
           </Step>
         </div>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start">
+        <aside className="lg:sticky lg:top-[calc(var(--hdr)+16px)] lg:self-start">
           <div className="card overflow-hidden">
             <div className="p-5">
               <h2 className="text-lg font-extrabold">Order summary</h2>

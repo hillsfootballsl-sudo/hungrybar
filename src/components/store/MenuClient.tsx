@@ -35,7 +35,7 @@ export function MenuClient({ initialCat, build, q: initialQ }: { initialCat?: st
     const obs = new IntersectionObserver((es) => {
       const v = es.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
       if (v) setActive(v.target.id.replace("cat-", ""));
-    }, { rootMargin: "-170px 0px -60% 0px" });
+    }, { rootMargin: "-200px 0px -60% 0px" });
     cat.categories.forEach((c) => {
       const el = document.getElementById(`cat-${c.slug}`);
       if (el) obs.observe(el);
@@ -63,20 +63,24 @@ export function MenuClient({ initialCat, build, q: initialQ }: { initialCat?: st
 
   return (
     <div className="mx-auto max-w-[1400px] md:px-6">
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="min-w-0 pb-28 md:pb-10">
-          <div className="sticky top-[124px] z-30 bg-white/95 px-4 pb-2 pt-4 backdrop-blur md:top-[76px] md:px-0">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_330px] xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 pb-36 lg:pb-10">
+          <div className="px-4 pt-4 md:px-0">
             <div className="relative max-w-xl">
               <Icon name="search" className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-char-400" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Try cheese pizza" aria-label="Search the menu" className="h-12 w-full rounded-full bg-char-50 pl-12 pr-4 font-bold outline-none placeholder:font-bold placeholder:text-char-300 focus:bg-white focus:ring-2 focus:ring-char/15" />
             </div>
-            <div ref={tabs} className="no-scrollbar mt-3 flex gap-6 overflow-x-auto border-b border-char-100">
+          </div>
+          <div className="sticky top-[var(--hdr)] z-30 bg-white/95 px-4 pt-3 backdrop-blur md:px-0">
+            <div ref={tabs} className="no-scrollbar flex gap-5 overflow-x-auto border-b border-char-100 md:gap-6">
               {cat.categories.map((c) => (
-                <a key={c.id} data-slug={c.slug} href={`#cat-${c.slug}`} onClick={(e) => { e.preventDefault(); setActive(c.slug); document.getElementById(`cat-${c.slug}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className={`shrink-0 border-b-[3px] pb-2.5 font-extrabold transition ${active === c.slug ? "border-tomato text-tomato" : "border-transparent text-char-600 hover:text-char"}`}>
+                <a key={c.id} data-slug={c.slug} href={`#cat-${c.slug}`} onClick={(e) => { e.preventDefault(); setActive(c.slug); document.getElementById(`cat-${c.slug}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className={`shrink-0 border-b-[3px] pb-2.5 pt-1 font-extrabold transition ${active === c.slug ? "border-tomato text-tomato" : "border-transparent text-char-600 hover:text-char"}`}>
                   {c.name}
                 </a>
               ))}
             </div>
+          </div>
+          <div className="px-4 md:px-0">
             <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
               {FILTERS.map(([k, label]) => {
                 const on = filters.includes(k);
@@ -108,10 +112,10 @@ export function MenuClient({ initialCat, build, q: initialQ }: { initialCat?: st
           )}
           {sections.map(({ c, items }) =>
             items.length || (showBuild && c.icon === "pizza") ? (
-              <section key={c.id} id={`cat-${c.slug}`} className="scroll-mt-[260px] px-4 pt-8 md:scroll-mt-[220px] md:px-0">
+              <section key={c.id} id={`cat-${c.slug}`} className="scroll-mt-[calc(var(--hdr)+60px)] px-4 pt-8 md:px-0">
                 <h2 className="text-2xl font-extrabold">{c.name}</h2>
                 {c.tagline && <p className="mb-4 text-sm font-bold text-char-400">{c.tagline}</p>}
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                   {showBuild && c.icon === "pizza" && <BuildYourOwnCard />}
                   {items.map((p) => (
                     <ProductCard key={p.id} p={p} />
@@ -121,8 +125,8 @@ export function MenuClient({ initialCat, build, q: initialQ }: { initialCat?: st
             ) : null,
           )}
         </div>
-        <aside className="hidden xl:block">
-          <div className="sticky top-[92px] h-[calc(100dvh-108px)] overflow-hidden rounded-3xl border border-char-100 bg-white shadow-[0_2px_14px_rgba(0,0,0,.06)]">
+        <aside className="hidden lg:block">
+          <div className="sticky top-[calc(var(--hdr)+16px)] h-[calc(100dvh-var(--hdr)-32px)] overflow-hidden rounded-3xl border border-char-100 bg-white shadow-[0_2px_14px_rgba(0,0,0,.06)]">
             <CartPanel variant="sidebar" />
           </div>
         </aside>

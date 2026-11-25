@@ -42,9 +42,9 @@ export function ComboPicker({ catalog: cat, open, productId, initial, onClose, o
   let idx = 0;
   return (
     <Sheet open={open} onClose={onClose} wide flush label={`Choose items for ${combo.name}`}>
-      <div className="flex max-h-[94dvh] flex-col overflow-y-auto md:grid md:max-h-[86vh] md:grid-cols-[0.9fr_1.1fr] md:overflow-hidden">
-        <div className="bg-[#F7F5F1] md:overflow-y-auto">
-          <div className="h-[30dvh] md:aspect-square md:h-auto">
+      <div className="flex max-h-[94dvh] flex-col overflow-y-auto lg:grid lg:max-h-[86vh] lg:grid-cols-[0.9fr_1.1fr] lg:overflow-hidden">
+        <div className="bg-[#F7F5F1] lg:overflow-y-auto">
+          <div className="h-[30dvh] lg:aspect-square lg:h-auto">
             <ComboArt product={combo} catalog={cat} />
           </div>
           <div className="p-5 md:p-7">
@@ -54,8 +54,8 @@ export function ComboPicker({ catalog: cat, open, productId, initial, onClose, o
             <p className="mt-3 text-sm text-char-400">Deal price {money(combo.variants[0]?.price ?? 0)}. Some choices add a small top-up, shown next to them.</p>
           </div>
         </div>
-        <div className="flex flex-col md:min-h-0">
-          <div className="flex-1 space-y-5 p-5 pt-6 md:max-h-[calc(86vh-88px)] md:overflow-y-auto md:p-7">
+        <div className="flex flex-col lg:min-h-0">
+          <div className="flex-1 space-y-5 p-5 pt-6 lg:max-h-[calc(86vh-88px)] lg:overflow-y-auto md:p-7">
             <h3 className="pr-10 text-2xl font-extrabold">Pick your items</h3>
             {combo.slots.map((slot) => (
               <div key={slot.id} className="rounded-2xl border border-char-100 p-4">
@@ -82,14 +82,14 @@ export function ComboPicker({ catalog: cat, open, productId, initial, onClose, o
                                 {p.image ? <img src={p.image} alt="" className="h-full w-full object-cover" /> : p.kind === "PIZZA" ? <PizzaArt catalog={cat} sizeId={o.sizeId ?? undefined} toppings={p.toppings} board={false} animate={false} scaleBySize={false} className="h-16 w-16" /> : <ItemArt art={p.art} className="h-12 w-12" />}
                               </span>
                               <span className="mt-1 line-clamp-2 text-xs font-bold leading-tight">{p.name}</span>
-                              <span className={`text-[11px] font-bold ${active ? "text-mustard" : "text-char-400"}`}>{o.upcharge ? `+${money(o.upcharge)}` : "Included"}</span>
+                              <span className={`text-xs font-bold ${active ? "text-mustard" : "text-char-400"}`}>{o.upcharge ? `+${money(o.upcharge)}` : "Included"}</span>
                             </button>
                           );
                         })}
                       </div>
                       {prod?.kind === "PIZZA" && pick.sizeId && (
                         <div className="mt-2">
-                          <button onClick={() => setEdit(edit === pi ? null : pi)} className="text-sm font-bold text-tomato underline">{edit === pi ? "Done customising" : "Customise this pizza"}</button>
+                          <button onClick={() => setEdit(edit === pi ? null : pi)} className="-my-1 py-2.5 text-sm font-bold text-tomato underline">{edit === pi ? "Done customising" : "Customise this pizza"}</button>
                           {edit === pi && (
                             <div className="mt-2 rounded-xl bg-char-50 p-3">
                               {cat.sizes.find((x) => x.id === pick.sizeId)?.shape !== "RECT" && (
@@ -120,7 +120,7 @@ export function ComboPicker({ catalog: cat, open, productId, initial, onClose, o
             <button
               disabled={!priced.valid}
               onClick={() => onConfirm(line)}
-              className="btn-primary h-14 flex-1 text-lg"
+              className="btn-primary h-14 min-w-0 flex-1 whitespace-nowrap px-4 text-base sm:text-lg"
             >
               {confirmLabel} {money(priced.unitPrice * qty)}
             </button>

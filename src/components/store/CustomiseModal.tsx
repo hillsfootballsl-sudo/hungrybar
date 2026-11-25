@@ -85,7 +85,7 @@ export function CustomiseModal() {
     });
 
   const visual = (
-    <div className="relative h-[40dvh] w-full overflow-hidden bg-[radial-gradient(circle_at_50%_40%,#4a4a4a,#1c1c1c)] md:aspect-square md:h-auto md:rounded-br-[40px]">
+    <div className="relative h-[40dvh] w-full overflow-hidden md:h-[44dvh] bg-[radial-gradient(circle_at_50%_40%,#4a4a4a,#1c1c1c)] lg:aspect-square lg:h-auto lg:rounded-br-[40px]">
       {view === "photo" && product?.image ? (
         <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
       ) : (
@@ -106,9 +106,9 @@ export function CustomiseModal() {
 
   return (
     <Sheet open={!!c} onClose={() => s.openCustomise(null)} wide flush label="Customise your pizza">
-      <div className="flex max-h-[94dvh] flex-col overflow-y-auto md:grid md:max-h-[86vh] md:grid-cols-[1fr_1.05fr] md:overflow-hidden">
+      <div className="flex max-h-[94dvh] flex-col overflow-y-auto lg:grid lg:max-h-[86vh] lg:grid-cols-[1fr_1.05fr] lg:overflow-hidden">
         {/* left: picture + info */}
-        <div className="bg-[#F7F5F1] md:max-h-[86vh] md:overflow-y-auto">
+        <div className="bg-[#F7F5F1] lg:max-h-[86vh] lg:overflow-y-auto">
           {visual}
           <div className="p-5 md:p-7">
             <div className="flex items-start justify-between gap-3">
@@ -123,7 +123,7 @@ export function CustomiseModal() {
               </div>
               <div className="flex gap-2">
                 {allergens(cat, toppings).map((a) => (
-                  <span key={a} className="flex flex-col items-center gap-1 text-[11px] font-bold">
+                  <span key={a} className="flex flex-col items-center gap-1 text-xs font-bold">
                     <span className="grid h-9 w-9 place-items-center rounded-full bg-char text-white">{a === "Milk" ? "🥛" : "🌾"}</span>
                     {a}
                   </span>
@@ -134,8 +134,8 @@ export function CustomiseModal() {
         </div>
 
         {/* right: options */}
-        <div className="flex flex-col bg-white md:min-h-0">
-          <div className="flex-1 p-5 pt-6 md:max-h-[calc(86vh-88px)] md:overflow-y-auto md:p-7">
+        <div className="flex flex-col bg-white lg:min-h-0">
+          <div className="flex-1 p-5 pt-6 lg:max-h-[calc(86vh-88px)] lg:overflow-y-auto md:p-7">
             <h3 className="pr-10 text-2xl font-extrabold">Customise Your Style</h3>
             {/* size */}
             <div className="mt-4 rounded-2xl border border-char-100">
@@ -208,7 +208,7 @@ export function CustomiseModal() {
           </div>
           <div className="sticky bottom-0 z-10 flex items-center gap-3 border-t border-char-100 bg-white p-4 md:px-7">
             <Stepper value={qty} min={1} max={20} onChange={setQty} />
-            <button disabled={!priced.valid} onClick={confirm} className="btn-primary h-14 flex-1 text-lg">
+            <button disabled={!priced.valid} onClick={confirm} className="btn-primary h-14 min-w-0 flex-1 whitespace-nowrap px-4 text-base sm:text-lg">
               {editing ? "Update" : "Add To Cart"} {money(priced.unitPrice * qty)}
             </button>
           </div>

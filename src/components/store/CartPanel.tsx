@@ -110,10 +110,10 @@ export function CartPanel({ variant = "sidebar", onClose }: { variant?: "sidebar
                           <button className="grid h-8 w-8 place-items-center" onClick={() => s.setQty(p.line.key, p.line.quantity + 1)} aria-label="More"><Icon name="plus" className="h-3.5 w-3.5" /></button>
                         </div>
                       ) : (
-                        <button className="text-xs font-bold text-char-400 underline" onClick={() => s.setQty(p.line.key, 0)}>Remove</button>
+                        <button className="py-2 text-sm font-bold text-char-400 underline" onClick={() => s.setQty(p.line.key, 0)}>Remove</button>
                       )}
                       {(p.line.kind === "PIZZA" || p.line.kind === "COMBO") && !p.line.rewardId && (
-                        <button className="text-xs font-bold text-tomato underline" onClick={() => (p.line.kind === "PIZZA" ? s.openCustomise({ editKey: p.line.key }) : s.openCombo({ productId: p.line.productId!, editKey: p.line.key }))}>Edit</button>
+                        <button className="px-2 py-2 text-sm font-bold text-tomato underline" onClick={() => (p.line.kind === "PIZZA" ? s.openCustomise({ editKey: p.line.key }) : s.openCombo({ productId: p.line.productId!, editKey: p.line.key }))}>Edit</button>
                       )}
                     </div>
                   </div>
@@ -222,7 +222,7 @@ export function CartBar() {
   const s = useStore();
   if (!s.count) return null;
   return (
-    <button onClick={() => s.setCartOpen(true)} className="fixed inset-x-3 bottom-[74px] z-40 flex h-14 items-center justify-between rounded-2xl bg-tomato px-5 font-extrabold text-white shadow-2xl md:hidden">
+    <button onClick={() => s.setCartOpen(true)} className="fixed inset-x-3 bottom-[calc(74px+env(safe-area-inset-bottom,0px))] z-40 mx-auto flex h-14 max-w-xl items-center justify-between rounded-2xl bg-tomato px-5 font-extrabold text-white shadow-2xl lg:hidden">
       <span className="flex items-center gap-2"><Icon name="bag" className="h-5 w-5" /> {s.count} item{s.count === 1 ? "" : "s"}</span>
       <span>View cart · {money(s.subtotal)}</span>
     </button>

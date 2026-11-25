@@ -74,7 +74,7 @@ export function InstallBanner() {
   return (
     <>
       {i.canShow && !hidden && (
-        <div className="fixed inset-x-3 bottom-[76px] z-40 flex items-center gap-3 rounded-2xl bg-char p-3 text-white shadow-2xl md:hidden">
+        <div className="fixed inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom,0px))] z-40 mx-auto flex max-w-xl items-center gap-3 rounded-2xl bg-char p-3 text-white shadow-2xl lg:hidden">
           <img src="/icons/icon-192.png" alt="" className="h-11 w-11 rounded-xl bg-white" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold">Get the Hungry Bar app</p>

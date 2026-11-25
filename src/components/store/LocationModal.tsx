@@ -67,7 +67,7 @@ export function LocationModal() {
       {type === "DELIVERY" && (
         <div className="mt-5">
           <p className="label">Choose your area</p>
-          <div className="grid max-h-[36dvh] gap-2 overflow-y-auto pr-1 scrollbar-thin">
+          <div className="grid max-h-[30dvh] gap-2 overflow-y-auto pr-1 scrollbar-thin">
             {s.config.zones.map((z) => (
               <button key={z.id} onClick={() => setZoneId(z.id)} className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left transition ${zoneId === z.id ? "border-char bg-char text-white" : "border-char-100 hover:border-char-300"}`}>
                 <span>
@@ -105,16 +105,18 @@ export function LocationModal() {
           </select>
         </div>
       </div>
+      <div className="sticky -bottom-5 z-10 -mx-5 mt-5 bg-white px-5 pb-5 pt-3 md:-bottom-7 md:-mx-7 md:px-7 md:pb-7">
       <button
         disabled={!can}
         onClick={() => {
           s.setMode({ type, zoneId: type === "DELIVERY" ? zoneId : s.mode.zoneId, when });
           s.closeLocation(true);
         }}
-        className="btn-primary mt-6 h-14 w-full text-lg"
+        className="btn-primary h-14 w-full text-lg"
       >
         {can ? "Start my order" : "Choose your area"}
       </button>
+      </div>
     </Sheet>
   );
 }
