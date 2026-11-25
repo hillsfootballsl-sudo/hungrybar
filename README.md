@@ -158,7 +158,7 @@ Your setup: **hungrybar.lk registered at the LK Domain Registry → nameservers 
 3. Build settings:
    - **Build command:** `npm run cf:build` (Cloudflare's default `npm run build` also works: inside Cloudflare's builder it runs the same full build)
    - **Deploy command:** `npx opennextjs-cloudflare deploy` (the default `npx wrangler deploy` also works)
-4. **Build variables** (used while building — creates the tables and loads the menu on the first deploy). Add them as **Secrets** under **Settings → Build → Variables and secrets** (not the list at the top of Settings). Without them the build fails a few seconds into "Building":
+4. **Build variables** (used while building — creates the tables and loads the menu on the first deploy). Add them as **Secrets** under **Settings → Build → Variables and secrets** (not the list at the top of Settings). Without them the build fails a few seconds into "Building". The build's first step checks both strings and the password and says in plain words what to fix (it never prints the password):
    - `DATABASE_URL`, `DIRECT_URL`
 5. Click **Deploy**. Every push to the branch starts a new build (**Deployments** tab); to rebuild without a code change, open a build there and press **Retry build**. Until a build succeeds the Worker shows Cloudflare's "Hello world" placeholder.
 6. **Settings → Variables and Secrets** (used while the site runs) — add, then redeploy:
