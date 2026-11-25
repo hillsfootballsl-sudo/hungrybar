@@ -142,25 +142,28 @@ While `SMS_PROVIDER="console"`, OTP codes are shown on screen. Real SMS is sent 
 
 ## Going live (step by step)
 
-1. **Database — Supabase** (free to start): create a project in the **Mumbai (ap-south-1)** region, which is closest to Sri Lanka. Copy the two connection strings into `DATABASE_URL` (port 6543, add `?pgbouncer=true&connection_limit=1`) and `DIRECT_URL` (port 5432).
-2. **Hosting — Vercel:** import this GitHub repo, then add every variable from `.env.example`.
-   - The build command `npm run vercel-build` runs the database migrations automatically.
-   - Then seed once from your computer: `DATABASE_URL=… DIRECT_URL=… npm run db:seed`.
-3. **Domain:** renew **hungrybar.lk** with your registrar and add it in Vercel → Domains, following Vercel's DNS records. Set `NEXT_PUBLIC_SITE_URL=https://hungrybar.lk`.
-4. **SMS OTP:** create a [notify.lk](https://notify.lk) or [text.lk](https://text.lk) account. Request a sender ID (e.g. `HungryBar`), set `SMS_PROVIDER` and its keys, and add credit. Each OTP is one SMS.
-5. **Order notifications:** generate keys once with `npx web-push generate-vapid-keys` and set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` (e.g. `mailto:you@example.com`).
-6. **Daily points job:** set `CRON_SECRET` to a long random string. `vercel.json` already schedules `/api/cron/daily` every night, which expires old points and gives birthday bonuses.
-7. **PayHere:** create a merchant account and add `hungrybar.lk` as an approved domain. Test with `PAYHERE_SANDBOX="true"`, then switch to `"false"`.
-8. **Tablet POS:** use an Android tablet with **Chrome**.
-   - Open `https://hungrybar.lk/pos`, then ⋮ → **Add to Home screen**, so it opens full-screen like an app.
-   - Turn the 80mm printer on and tap 🖨️ **Connect printer**.
-   - If your printer doesn't show up, it's Bluetooth-Classic-only. Install **RawBT** from the Play Store, pair the printer in RawBT, and choose "RawBT app" in the POS printer menu.
-   - Most 80mm printers with an RJ11 cash-drawer port will pop the drawer on cash sales.
-9. **Kitchen screen:** any phone, tablet or smart TV browser → `/kitchen`, logged in with the Kitchen PIN.
-10. **Table QR codes:** Admin → Delivery & tables → **Print QR cards**, then stick them on the tables.
-11. **Change all PINs**, do a stock count (Stock → Adjust → Physical count), and check the placeholder numbers above.
+Your setup: **domain registered at the LK Domain Registry → nameservers pointed to Cloudflare (DNS) → app runs on Vercel → data in Supabase.**
 
-**Monthly cost estimate:** Vercel Hobby and Supabase Free are $0 at the start. Once you grow, Vercel Pro is $20 and Supabase Pro is $25. Add SMS credit and PayHere's per-transaction fee.
+1. **Database — Supabase** (free to start): new project, region **South Asia (Mumbai)**. Click **Connect** and copy:
+   - the **Transaction pooler** string (port 6543) → `DATABASE_URL`, adding `?pgbouncer=true&connection_limit=1` at the end
+   - the **Session pooler** string (port 5432) → `DIRECT_URL`
+   (Put your database password in both where it says `[YOUR-PASSWORD]`.)
+2. **App — Vercel**: Add New → Project → import the GitHub repo `hungrybar`. Before clicking Deploy, open **Environment Variables** and add everything from `.env.example` (at minimum `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_SITE_URL`, `CRON_SECRET`). Deploy.
+   - The first deploy creates the database tables **and loads the Hungry Bar menu automatically**; later deploys never overwrite your data.
+   - `vercel.json` runs the app in Vercel's **Mumbai** region (next to the database) and schedules the nightly points job.
+   - Vercel's free Hobby plan is for non-commercial use; switch to **Pro** before taking real orders.
+3. **Domain — Cloudflare**: in Vercel → Settings → Domains add `hungrybar.lk` and `www.hungrybar.lk` (redirect www → hungrybar.lk). In Cloudflare → DNS → Records add the **A** record for `@` and the **CNAME** for `www` with the exact values Vercel shows, and set both to **DNS only (grey cloud)**. Delete old A/AAAA/CNAME records for `@`/`www`; keep email (MX/TXT) records.
+4. Set `NEXT_PUBLIC_SITE_URL=https://hungrybar.lk` in Vercel and **Redeploy**.
+5. **Log in** at `hungrybar.lk/staff/login` (Owner PIN 1234) and **change every PIN** in Admin → Staff straight away.
+6. **SMS login codes:** create a [notify.lk](https://notify.lk) or [text.lk](https://text.lk) account, request a sender ID (e.g. `HungryBar`), set `SMS_PROVIDER` and its keys, add credit. Until then customers can't sign in (unless you set `OTP_TEST_MODE=true` for a private trial — remove it before going public).
+7. **Order notifications:** generate keys once with `npx web-push generate-vapid-keys` and set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
+8. **PayHere:** create a merchant account, add `hungrybar.lk` as an approved domain, set the keys. Test with `PAYHERE_SANDBOX="true"`, then `"false"`.
+9. **Tablet POS:** Android tablet → Chrome → `hungrybar.lk/pos` → ⋮ → **Add to Home screen**. Turn on the 80mm printer and tap 🖨️ **Connect printer** (or use the RawBT app for Bluetooth-Classic printers).
+10. **Kitchen screen:** any screen → `hungrybar.lk/kitchen`, Kitchen PIN.
+11. **Table QR codes:** Admin → Delivery & tables → **Print QR cards** (do this after step 4).
+12. Do a stock count (Stock → Adjust → Physical count) and check the placeholder numbers above.
+
+**Monthly cost estimate:** Supabase Free $0 to start (Pro $25 when you grow) · Vercel Pro $20 · domain renewal · SMS credit · PayHere per-transaction fee.
 
 ---
 
