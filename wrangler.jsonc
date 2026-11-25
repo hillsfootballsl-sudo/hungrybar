@@ -11,5 +11,7 @@
   "placement": { "mode": "smart" },
   // 00:30 UTC = 6:00 am in Sri Lanka
   "triggers": { "crons": ["30 0 * * *"] },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Keep the text variables you add in the dashboard (Settings → Variables and Secrets) on every GitHub deploy
+  "keep_vars": true
 }

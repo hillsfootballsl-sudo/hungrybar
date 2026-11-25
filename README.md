@@ -145,14 +145,14 @@ While `SMS_PROVIDER="console"`, OTP codes are shown on screen. Real SMS is sent 
 Your setup: **hungrybar.lk registered at the LK Domain Registry → nameservers on Cloudflare → the app runs on Cloudflare Workers → data in Supabase.** Everything deploys straight from GitHub.
 
 ### 1. Supabase (the database)
-1. supabase.com → **New project** → region **South Asia (Mumbai)** → set a strong database password.
+1. supabase.com → **New project** → region **South Asia (Mumbai)** → set a strong database password using **only letters and numbers** (symbols like `@ # /` break the connection string).
 2. When it's ready click **Connect** and copy two strings (replace `[YOUR-PASSWORD]` in both):
    - **Transaction pooler** (port **6543**) → this is `DATABASE_URL`
    - **Session pooler** (port **5432**) → this is `DIRECT_URL`
 
 ### 2. Cloudflare Worker (the app)
 1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Import a repository** → choose GitHub → `hungrybar`.
-2. **Project name: `hungrybar`** (must match `wrangler.jsonc`).
+2. **Project name: `hungrybar`** (must match `wrangler.jsonc`). Production branch: `claude/funny-faraday-14ka3e` (the repo's default branch).
 3. Build settings:
    - **Build command:** `npm run cf:build`
    - **Deploy command:** `npx opennextjs-cloudflare deploy`
@@ -160,6 +160,8 @@ Your setup: **hungrybar.lk registered at the LK Domain Registry → nameservers 
    - `DATABASE_URL`, `DIRECT_URL`
 5. Click **Deploy**. When it finishes you get a `hungrybar.<your-account>.workers.dev` address.
 6. **Settings → Variables and Secrets** (used while the site runs) — add, then redeploy:
+
+Text variables added here are kept on every GitHub deploy (`keep_vars` in `wrangler.jsonc`).
 
 | Name | Type | Value |
 |---|---|---|
