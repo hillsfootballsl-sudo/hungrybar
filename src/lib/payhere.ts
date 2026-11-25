@@ -1,7 +1,7 @@
 // PayHere (Sri Lanka) checkout helpers — https://support.payhere.lk/api-&-mobile-sdk/checkout-api
-import { createHash } from "crypto";
+import { md5Hex } from "./webcrypto";
 
-const md5 = (s: string) => createHash("md5").update(s).digest("hex").toUpperCase();
+const md5 = (s: string) => md5Hex(s).toUpperCase();
 
 export function payhereConfigured() {
   return !!(process.env.PAYHERE_MERCHANT_ID && process.env.PAYHERE_MERCHANT_SECRET);

@@ -1,6 +1,7 @@
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { PageHeader } from "@/components/admin/ui";
 import { db } from "@/lib/db";
+import { siteUrl, vapidKeys } from "@/lib/env";
 import { getAllSettings } from "@/lib/settings";
 
 export const metadata = { title: "Settings" };
@@ -13,9 +14,9 @@ export default async function Settings() {
   const integrations = [
     ["SMS (OTP + alerts)", process.env.SMS_PROVIDER && process.env.SMS_PROVIDER !== "console" ? `✅ ${process.env.SMS_PROVIDER}` : "⚠️ Test mode — codes shown on screen"],
     ["PayHere card payments", process.env.PAYHERE_MERCHANT_ID ? (process.env.PAYHERE_SANDBOX === "false" ? "✅ Live" : "🧪 Sandbox") : "⚠️ Not configured"],
-    ["Order notifications (push)", process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ? "✅ Ready" : "⚠️ Not configured"],
+    ["Order notifications (push)", vapidKeys() ? "✅ Ready" : "⚠️ Not configured"],
     ["Daily points job (expiry & birthdays)", process.env.CRON_SECRET ? "✅ Scheduled" : "⚠️ Set CRON_SECRET"],
-    ["Website address", process.env.NEXT_PUBLIC_SITE_URL ?? "not set"],
+    ["Website address", siteUrl()],
   ];
   return (
     <div>

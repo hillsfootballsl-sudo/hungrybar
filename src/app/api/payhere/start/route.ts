@@ -1,5 +1,6 @@
 import { fail, handle, ok } from "@/lib/api";
 import { db } from "@/lib/db";
+import { siteUrl } from "@/lib/env";
 import { orderCode } from "@/lib/orders";
 import { checkoutHash, payhereConfigured, payhereEndpoint } from "@/lib/payhere";
 
@@ -9,7 +10,7 @@ export const GET = handle(async (req: Request) => {
   const o = await db.order.findUnique({ where: { id }, include: { customer: true } });
   if (!o || o.paymentMethod !== "PAYHERE") return fail("Order not found", 404);
   if (o.paymentStatus === "PAID") return fail("Already paid");
-  const site = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
+  const site = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL ? siteUrl() : new URL(req.url).origin;
   const [first, ...rest] = (o.customerName || "Hungry Customer").split(" ");
   return ok({
     action: payhereEndpoint(),

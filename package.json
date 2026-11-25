@@ -12,27 +12,32 @@
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && prisma migrate deploy && tsx prisma/seed.ts && next build",
-    "db:seed:demo": "SEED_DEMO=1 tsx prisma/seed.ts"
+    "db:seed:demo": "SEED_DEMO=1 tsx prisma/seed.ts",
+    "cf:build": "prisma generate && prisma migrate deploy && tsx prisma/seed.ts && opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "cf:deploy": "opennextjs-cloudflare deploy"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^6.19.3",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^2.4.3",
     "framer-motion": "^11.18.2",
     "jose": "^5.10.0",
     "next": "^15.5.29",
+    "pg": "^8.23.1",
     "qrcode": "^1.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "web-push": "^3.6.7",
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.16",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.15.30",
+    "@types/pg": "^8.15.6",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
@@ -42,7 +47,9 @@
     "prisma": "^6.19.3",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "web-push": "^3.6.7",
+    "wrangler": "^4.158.0"
   },
   "engines": {
     "node": ">=20"

@@ -1,7 +1,6 @@
 "use server";
 // All admin mutations. Every action re-checks the staff role on the server.
 import bcrypt from "bcryptjs";
-import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { MANAGERS, requireStaff } from "../auth";
@@ -10,6 +9,7 @@ import { saveImage } from "../media";
 import { checkLowStock } from "../orders";
 import { credit, debit } from "../points";
 import { DEFAULTS, setSetting, type SettingKey } from "../settings";
+import { randomHex } from "../webcrypto";
 
 type Res = { ok: true; id?: string } | { ok: false; error: string };
 
@@ -128,7 +128,7 @@ export async function saveCategory(input: unknown) {
   return guard(async () => {
     const d = z.object({ id: z.string().optional(), name: str().min(1), tagline: str(120).optional(), icon: str(30).optional(), availableFrom: z.string().regex(/^\d\d:\d\d$/), availableTo: z.string().regex(/^\d\d:\d\d$/), sortOrder: z.coerce.number().int(), active: bool, showOnHome: bool }).parse(input);
     const data = { name: d.name, tagline: d.tagline || null, icon: d.icon || null, availableFrom: d.availableFrom, availableTo: d.availableTo, sortOrder: d.sortOrder, active: d.active, showOnHome: d.showOnHome };
-    return d.id ? db.category.update({ where: { id: d.id }, data }) : db.category.create({ data: { ...data, slug: slugify(d.name) + "-" + randomBytes(2).toString("hex") } });
+    return d.id ? db.category.update({ where: { id: d.id }, data }) : db.category.create({ data: { ...data, slug: slugify(d.name) + "-" + randomHex(2) } });
   }, ["/admin/menu", "/menu", "/"]);
 }
 
@@ -177,7 +177,7 @@ export async function saveProduct(input: unknown) {
     const d = productSchema.parse(input);
     return db.$transaction(async (tx) => {
       const base = { name: d.name, description: d.description || null, categoryId: d.categoryId, kind: d.kind, isVeg: d.isVeg ?? d.tags.includes("veg"), art: d.art || null, image: d.image || null, tags: d.tags, featured: d.featured, active: d.active, sortOrder: d.sortOrder };
-      const p = d.id ? await tx.product.update({ where: { id: d.id }, data: base }) : await tx.product.create({ data: { ...base, slug: slugify(d.name) + "-" + randomBytes(2).toString("hex") } });
+      const p = d.id ? await tx.product.update({ where: { id: d.id }, data: base }) : await tx.product.create({ data: { ...base, slug: slugify(d.name) + "-" + randomHex(2) } });
       // variants: update existing, create new, deactivate removed (keeps order history intact)
       const keep: string[] = [];
       for (const [i, v] of d.variants.entries()) {
@@ -324,11 +324,11 @@ export async function saveTable(input: unknown) {
   return guard(async () => {
     const d = z.object({ id: z.string().optional(), label: str(10).min(1), seats: z.coerce.number().int().min(1).max(30), active: bool }).parse(input);
     const { id, ...data } = d;
-    return id ? db.diningTable.update({ where: { id }, data }) : db.diningTable.create({ data: { ...data, token: randomBytes(6).toString("hex") } });
+    return id ? db.diningTable.update({ where: { id }, data }) : db.diningTable.create({ data: { ...data, token: randomHex(6) } });
   }, ["/admin/delivery"]);
 }
 export async function rotateTableToken(id: string) {
-  return guard(() => db.diningTable.update({ where: { id }, data: { token: randomBytes(6).toString("hex") } }), ["/admin/delivery"]);
+  return guard(() => db.diningTable.update({ where: { id }, data: { token: randomHex(6) } }), ["/admin/delivery"]);
 }
 
 // ───────── Staff ─────────
@@ -370,16 +370,14 @@ export async function deleteBanner(id: string) {
   return guard(() => db.banner.delete({ where: { id } }), ["/admin/banners", "/"]);
 }
 
-/** Upload a photo (from a FormData "file"). target: product | category | banner */
+/** Upload a photo (FormData "file", already resized in the browser). target: product | category | banner */
 export async function uploadPhoto(form: FormData) {
   return guard(async () => {
     const file = form.get("file");
     const target = String(form.get("target") ?? "");
     const id = String(form.get("id") ?? "");
-    if (!(file instanceof File) || file.size === 0) throw new Error("Choose a photo");
-    if (file.size > 12 * 1024 * 1024) throw new Error("Photo is too large (max 12 MB)");
-    if (!/^image\//.test(file.type)) throw new Error("That file isn't an image");
-    const img = await saveImage(Buffer.from(await file.arrayBuffer()), { square: target === "product" || target === "category", maxWidth: 1800 });
+    if (!(file instanceof Blob) || file.size === 0) throw new Error("Choose a photo");
+    const img = await saveImage(new Uint8Array(await file.arrayBuffer()), file.type, Number(form.get("width")), Number(form.get("height")));
     if (target === "product" && id) await db.product.update({ where: { id }, data: { image: img.url } });
     if (target === "category" && id) await db.category.update({ where: { id }, data: { imageId: img.id } });
     if (target === "banner" && id) await db.banner.update({ where: { id }, data: { imageId: img.id } });

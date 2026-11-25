@@ -1,18 +1,8 @@
-// Web push notifications for order updates (works once the site is installed or allowed in the browser)
-import webpush from "web-push";
+// Order-status notifications to customers' phones (Web Push)
 import { db } from "./db";
+import { vapidKeys } from "./env";
 import { orderCode } from "./orders";
-
-let configured = false;
-function setup() {
-  if (configured) return true;
-  const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const priv = process.env.VAPID_PRIVATE_KEY;
-  if (!pub || !priv) return false;
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:orders@hungrybar.lk", pub, priv);
-  configured = true;
-  return true;
-}
+import { sendWebPush } from "./webpush";
 
 const MESSAGES: Record<string, [string, string]> = {
   CONFIRMED: ["Order accepted 👍", "We've got your order and it's going in the oven soon."],
@@ -24,19 +14,19 @@ const MESSAGES: Record<string, [string, string]> = {
 };
 
 export async function sendPush(sub: { id: string; endpoint: string; p256dh: string; auth: string }, payload: object) {
-  if (!setup()) return false;
+  const vapid = vapidKeys();
+  if (!vapid) return false;
   try {
-    await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify(payload), { TTL: 3600 });
-    return true;
-  } catch (e) {
-    const code = (e as { statusCode?: number }).statusCode;
-    if (code === 404 || code === 410) await db.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
+    const status = await sendWebPush(sub, payload, vapid);
+    if (status === 404 || status === 410) await db.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
+    return status >= 200 && status < 300;
+  } catch {
     return false;
   }
 }
 
 export async function notifyOrder(orderId: string) {
-  if (!setup()) return;
+  if (!vapidKeys()) return;
   const o = await db.order.findUnique({ where: { id: orderId }, select: { id: true, number: true, status: true, customerId: true, type: true } });
   if (!o) return;
   const msg = MESSAGES[o.status];

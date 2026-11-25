@@ -3,11 +3,16 @@
 // Usage:  npm run db:seed            (only seeds an empty database)
 //         SEED_RESET=1 npm run db:seed   (wipes everything first — careful!)
 //         SEED_DEMO=1 npm run db:seed    (also creates ~3 weeks of demo orders for the dashboard)
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, type ToppingGroup } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 
-const db = new PrismaClient();
+// Use the direct/session connection when available (works for everything, including during cloud builds)
+const seedUrl = new URL(process.env.DIRECT_URL || process.env.DATABASE_URL || "");
+seedUrl.searchParams.delete("pgbouncer");
+seedUrl.searchParams.delete("connection_limit");
+const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: seedUrl.toString() }) });
 
 async function reset() {
   const tables = [

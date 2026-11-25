@@ -1,12 +1,11 @@
-import sharp from "sharp";
 import { db } from "./db";
 
-/** Resize + compress an uploaded photo to WebP and store it. Returns the public URL. */
-export async function saveImage(buf: Buffer, opts: { maxWidth?: number; alt?: string; square?: boolean } = {}) {
-  let img = sharp(buf, { failOn: "none" }).rotate();
-  if (opts.square) img = img.resize(1000, 1000, { fit: "cover", position: "centre" });
-  else img = img.resize({ width: opts.maxWidth ?? 1400, withoutEnlargement: true });
-  const out = await img.webp({ quality: 82 }).toBuffer({ resolveWithObject: true });
-  const m = await db.media.create({ data: { mime: "image/webp", data: out.data, width: out.info.width, height: out.info.height, alt: opts.alt ?? null } });
+const ALLOWED = ["image/webp", "image/jpeg", "image/png"];
+
+/** Store an already-resized photo (the admin page shrinks it in the browser first). Returns its public URL. */
+export async function saveImage(bytes: Uint8Array, mime: string, width: number, height: number, alt?: string) {
+  if (!ALLOWED.includes(mime)) throw new Error("Use a JPG, PNG or WebP photo");
+  if (bytes.length > 3 * 1024 * 1024) throw new Error("Photo is too large after resizing (max 3 MB)");
+  const m = await db.media.create({ data: { mime, data: Buffer.from(bytes), width: Math.round(width) || 0, height: Math.round(height) || 0, alt: alt ?? null } });
   return { id: m.id, url: `/media/${m.id}`, width: m.width, height: m.height };
 }

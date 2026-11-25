@@ -8,6 +8,7 @@ import { LoginSheet } from "@/components/store/LoginSheet";
 import { StoreProvider } from "@/components/store/StoreProvider";
 import { loadCatalog } from "@/lib/catalog";
 import { db } from "@/lib/db";
+import { vapidKeys } from "@/lib/env";
 import { payhereConfigured } from "@/lib/payhere";
 import { getAllSettings } from "@/lib/settings";
 
@@ -24,7 +25,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
         rewards: s.rewards,
         zones: zones.map((z) => ({ id: z.id, name: z.name, fee: z.fee, eta: z.etaMinutes })),
         payhere: payhereConfigured(),
-        vapidKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null,
+        vapidKey: vapidKeys()?.publicKey ?? null,
         accepting: s.orders.acceptingOnline,
         prepMinutes: s.orders.prepMinutes,
       }}

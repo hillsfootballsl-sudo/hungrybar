@@ -1,8 +1,8 @@
-import { createHash, randomInt } from "crypto";
 import { z } from "zod";
 import { fail, handle, ok } from "@/lib/api";
 import { db } from "@/lib/db";
 import { normalizePhone, sendSms } from "@/lib/sms";
+import { randomInt, sha256Hex } from "@/lib/webcrypto";
 
 export const POST = handle(async (req: Request) => {
   const { phone: raw } = z.object({ phone: z.string() }).parse(await req.json());
@@ -13,7 +13,7 @@ export const POST = handle(async (req: Request) => {
   const hourCount = await db.otpCode.count({ where: { phone, createdAt: { gte: new Date(Date.now() - 3600_000) } } });
   if (hourCount >= 5) return fail("Too many attempts. Try again in an hour.", 429);
   const code = String(randomInt(100000, 999999));
-  const codeHash = createHash("sha256").update(code + (process.env.AUTH_SECRET || "")).digest("hex");
+  const codeHash = await sha256Hex(code + (process.env.AUTH_SECRET || ""));
   await db.otpCode.create({ data: { phone, codeHash, expiresAt: new Date(Date.now() + 5 * 60_000) } });
   const r = await sendSms(phone, `${code} is your Hungry Bar code. It expires in 5 minutes.`);
   if (!r.ok) return fail("Couldn't send the SMS. Please try again.", 502);

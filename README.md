@@ -60,7 +60,7 @@ One system for **Hungry Bar, Hill Food Square, Dehiwala**:
 
 - **Works at the counter too.** The POS looks the customer up by phone, shows their points and claims rewards.
 - **Cancelling** gives back the points that were spent and takes back the points that were earned.
-- A daily job (Vercel Cron) expires old points and drops birthday bonuses.
+- A daily job (a Cloudflare scheduled trigger, 6:00 am Sri Lanka time) expires old points and drops birthday bonuses.
 
 ### POS (tablet)
 - **Taking orders.** Tap a size to add a pizza, tap the picture to customise, tap a **combo** to choose its items. Covers takeaway, dine-in (table), delivery, **Uber** and **PickMe**.
@@ -140,30 +140,56 @@ While `SMS_PROVIDER="console"`, OTP codes are shown on screen. Real SMS is sent 
 
 ---
 
-## Going live (step by step)
+## Going live on Cloudflare + Supabase (step by step)
 
-Your setup: **domain registered at the LK Domain Registry → nameservers pointed to Cloudflare (DNS) → app runs on Vercel → data in Supabase.**
+Your setup: **hungrybar.lk registered at the LK Domain Registry → nameservers on Cloudflare → the app runs on Cloudflare Workers → data in Supabase.** Everything deploys straight from GitHub.
 
-1. **Database — Supabase** (free to start): new project, region **South Asia (Mumbai)**. Click **Connect** and copy:
-   - the **Transaction pooler** string (port 6543) → `DATABASE_URL`, adding `?pgbouncer=true&connection_limit=1` at the end
-   - the **Session pooler** string (port 5432) → `DIRECT_URL`
-   (Put your database password in both where it says `[YOUR-PASSWORD]`.)
-2. **App — Vercel**: Add New → Project → import the GitHub repo `hungrybar`. Before clicking Deploy, open **Environment Variables** and add everything from `.env.example` (at minimum `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_SITE_URL`, `CRON_SECRET`). Deploy.
-   - The first deploy creates the database tables **and loads the Hungry Bar menu automatically**; later deploys never overwrite your data.
-   - `vercel.json` runs the app in Vercel's **Mumbai** region (next to the database) and schedules the nightly points job.
-   - Vercel's free Hobby plan is for non-commercial use; switch to **Pro** before taking real orders.
-3. **Domain — Cloudflare**: in Vercel → Settings → Domains add `hungrybar.lk` and `www.hungrybar.lk` (redirect www → hungrybar.lk). In Cloudflare → DNS → Records add the **A** record for `@` and the **CNAME** for `www` with the exact values Vercel shows, and set both to **DNS only (grey cloud)**. Delete old A/AAAA/CNAME records for `@`/`www`; keep email (MX/TXT) records.
-4. Set `NEXT_PUBLIC_SITE_URL=https://hungrybar.lk` in Vercel and **Redeploy**.
-5. **Log in** at `hungrybar.lk/staff/login` (Owner PIN 1234) and **change every PIN** in Admin → Staff straight away.
-6. **SMS login codes:** create a [notify.lk](https://notify.lk) or [text.lk](https://text.lk) account, request a sender ID (e.g. `HungryBar`), set `SMS_PROVIDER` and its keys, add credit. Until then customers can't sign in (unless you set `OTP_TEST_MODE=true` for a private trial — remove it before going public).
-7. **Order notifications:** generate keys once with `npx web-push generate-vapid-keys` and set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
-8. **PayHere:** create a merchant account, add `hungrybar.lk` as an approved domain, set the keys. Test with `PAYHERE_SANDBOX="true"`, then `"false"`.
-9. **Tablet POS:** Android tablet → Chrome → `hungrybar.lk/pos` → ⋮ → **Add to Home screen**. Turn on the 80mm printer and tap 🖨️ **Connect printer** (or use the RawBT app for Bluetooth-Classic printers).
-10. **Kitchen screen:** any screen → `hungrybar.lk/kitchen`, Kitchen PIN.
-11. **Table QR codes:** Admin → Delivery & tables → **Print QR cards** (do this after step 4).
-12. Do a stock count (Stock → Adjust → Physical count) and check the placeholder numbers above.
+### 1. Supabase (the database)
+1. supabase.com → **New project** → region **South Asia (Mumbai)** → set a strong database password.
+2. When it's ready click **Connect** and copy two strings (replace `[YOUR-PASSWORD]` in both):
+   - **Transaction pooler** (port **6543**) → this is `DATABASE_URL`
+   - **Session pooler** (port **5432**) → this is `DIRECT_URL`
 
-**Monthly cost estimate:** Supabase Free $0 to start (Pro $25 when you grow) · Vercel Pro $20 · domain renewal · SMS credit · PayHere per-transaction fee.
+### 2. Cloudflare Worker (the app)
+1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Import a repository** → choose GitHub → `hungrybar`.
+2. **Project name: `hungrybar`** (must match `wrangler.jsonc`).
+3. Build settings:
+   - **Build command:** `npm run cf:build`
+   - **Deploy command:** `npx opennextjs-cloudflare deploy`
+4. **Build variables** (used while building — creates the tables and loads the menu on the first deploy):
+   - `DATABASE_URL`, `DIRECT_URL`
+5. Click **Deploy**. When it finishes you get a `hungrybar.<your-account>.workers.dev` address.
+6. **Settings → Variables and Secrets** (used while the site runs) — add, then redeploy:
+
+| Name | Type | Value |
+|---|---|---|
+| `DATABASE_URL` | Secret | the port-6543 string |
+| `AUTH_SECRET` | Secret | any long random text (40+ characters) |
+| `CRON_SECRET` | Secret | another long random text |
+| `SITE_URL` | Text | `https://hungrybar.lk` |
+| `SMS_PROVIDER` | Text | `console` until SMS is set up |
+| `OTP_TEST_MODE` | Text | `true` **only** for a private trial (shows login codes on screen — remove before going public) |
+
+### 3. Connect hungrybar.lk
+1. In Cloudflare **DNS → Records**, delete any old `A`, `AAAA` or `CNAME` records for `hungrybar.lk` and `www` (keep email `MX`/`TXT` records).
+2. Worker → **Settings → Domains & Routes → Add → Custom domain** → `hungrybar.lk`. Repeat for `www.hungrybar.lk`.
+   Cloudflare creates the DNS records and the HTTPS certificate itself — usually live within minutes.
+
+### 4. First things on the live site
+1. `hungrybar.lk/staff/login` → Owner PIN **1234** → Admin → Staff → **change every PIN**.
+2. **SMS login codes:** [notify.lk](https://notify.lk) or [text.lk](https://text.lk) account + sender ID (e.g. `HungryBar`) → add `SMS_PROVIDER` (`notifylk`/`textlk`) and its keys as variables/secrets.
+3. **Order notifications:** run `npx web-push generate-vapid-keys` once on any computer with Node.js, then add `VAPID_PUBLIC_KEY` (text), `VAPID_PRIVATE_KEY` (secret), `VAPID_SUBJECT` (`mailto:you@example.com`).
+4. **PayHere:** merchant account → add `hungrybar.lk` as an approved domain → add `PAYHERE_MERCHANT_ID`, `PAYHERE_MERCHANT_SECRET` (secret), `PAYHERE_SANDBOX` (`true` to test, `false` for real money).
+5. **Tablet POS:** Android tablet → Chrome → `hungrybar.lk/pos` → ⋮ → **Add to Home screen** → turn on the 80mm printer → 🖨️ **Connect printer** (or the RawBT app for Bluetooth-Classic printers).
+6. **Kitchen screen:** any screen → `hungrybar.lk/kitchen` (Kitchen PIN).
+7. **Table QR codes:** Admin → Delivery & tables → **Print QR cards**.
+8. Do a stock count (Stock → Adjust → Physical count) and check the placeholder numbers above.
+
+Every push to the GitHub branch redeploys automatically. The nightly points job runs on its own (see `triggers` in `wrangler.jsonc`).
+
+**Plans & cost:** Supabase Free to start (Pro $25/month when you grow). Cloudflare **Workers Paid ($5/month)** is recommended for a live shop: the free plan allows only 10 ms of CPU per request, which page rendering and PIN checks can go over (visitors would see error 1102). The app is about 2.6 MB compressed, under both plans' size limits.
+
+**Test it on your own computer in Cloudflare's runtime:** create `.dev.vars` with `DATABASE_URL`, `AUTH_SECRET` (see `.env.example`), then `npm run cf:preview`.
 
 ---
 
