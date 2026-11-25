@@ -146,9 +146,11 @@ Your setup: **hungrybar.lk registered at the LK Domain Registry → nameservers 
 
 ### 1. Supabase (the database)
 1. supabase.com → **New project** → region **South Asia (Mumbai)** → set a strong database password using **only letters and numbers** (symbols like `@ # /` break the connection string).
-2. When it's ready click **Connect** and copy two strings (replace `[YOUR-PASSWORD]` in both):
-   - **Transaction pooler** (port **6543**) → this is `DATABASE_URL`
-   - **Session pooler** (port **5432**) → this is `DIRECT_URL`
+2. When it's ready click **Connect** → **ORMs** tab → **Prisma**. The `.env` box there has both strings (replace `[YOUR-PASSWORD]` in both, and leave out the quotes):
+   - port **6543** (transaction pooler, `?pgbouncer=true`) → this is `DATABASE_URL`
+   - port **5432** (session pooler) → this is `DIRECT_URL`
+   - Don't use the "Direct connection" (`db.<project>.supabase.co`): Cloudflare can't reach it. Ignore the `@supabase/supabase-js` install command and the `NEXT_PUBLIC_SUPABASE_*` keys Supabase shows for Next.js; this app talks to the database directly.
+   - Forgot the password? **Project Settings → Database → Reset database password**.
 
 ### 2. Cloudflare Worker (the app)
 1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Import a repository** → choose GitHub → `hungrybar`.
@@ -156,9 +158,9 @@ Your setup: **hungrybar.lk registered at the LK Domain Registry → nameservers 
 3. Build settings:
    - **Build command:** `npm run cf:build`
    - **Deploy command:** `npx opennextjs-cloudflare deploy`
-4. **Build variables** (used while building — creates the tables and loads the menu on the first deploy):
+4. **Build variables** (used while building — creates the tables and loads the menu on the first deploy). Add them as **Secrets** under **Settings → Build → Variables and secrets** (not the list at the top of Settings). Without them the build fails a few seconds into "Building":
    - `DATABASE_URL`, `DIRECT_URL`
-5. Click **Deploy**. When it finishes you get a `hungrybar.<your-account>.workers.dev` address.
+5. Click **Deploy**. Every push to the branch starts a new build (**Deployments** tab); to rebuild without a code change, open a build there and press **Retry build**. Until a build succeeds the Worker shows Cloudflare's "Hello world" placeholder.
 6. **Settings → Variables and Secrets** (used while the site runs) — add, then redeploy:
 
 Text variables added here are kept on every GitHub deploy (`keep_vars` in `wrangler.jsonc`).
@@ -174,7 +176,7 @@ Text variables added here are kept on every GitHub deploy (`keep_vars` in `wrang
 
 ### 3. Connect hungrybar.lk
 1. In Cloudflare **DNS → Records**, delete any old `A`, `AAAA` or `CNAME` records for `hungrybar.lk` and `www` (keep email `MX`/`TXT` records).
-2. Worker → **Settings → Domains & Routes → Add → Custom domain** → `hungrybar.lk`. Repeat for `www.hungrybar.lk`.
+2. Worker → **Domains** tab → **+ Add Domain** → `hungrybar.lk`. Repeat for `www.hungrybar.lk`.
    Cloudflare creates the DNS records and the HTTPS certificate itself — usually live within minutes.
 
 ### 4. First things on the live site
