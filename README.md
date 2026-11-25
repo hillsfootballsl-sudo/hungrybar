@@ -187,7 +187,7 @@ Your setup: **hungrybar.lk registered at the LK Domain Registry → nameservers 
 
 Every push to the GitHub branch redeploys automatically. The nightly points job runs on its own (see `triggers` in `wrangler.jsonc`).
 
-**Plans & cost:** Supabase Free to start (Pro $25/month when you grow). Cloudflare **Workers Paid ($5/month)** is recommended for a live shop: the free plan allows only 10 ms of CPU per request, which page rendering and PIN checks can go over (visitors would see error 1102). The app is about 2.6 MB compressed, under both plans' size limits.
+**Plans & cost:** Supabase Free is enough to start (Pro $25/month when you grow). Cloudflare **Workers Free** allows only 10 ms of CPU per request. Measured in Cloudflare's runtime, this app needs about 15 ms for a simple API call and 50–100 ms to render a page or check a staff PIN, so on the free plan visitors and staff would often see *error 1102 (Worker exceeded resource limits)*. Use **Workers Paid ($5/month)** for the live shop: 30 s of CPU per request, with 10 million requests a month included. You can deploy on Free first and upgrade later under Workers & Pages → Plans; nothing in the code or settings changes. The app is about 2.6 MB compressed, under both plans' size limits (3 MB Free, 10 MB Paid).
 
 **Test it on your own computer in Cloudflare's runtime:** create `.dev.vars` with `DATABASE_URL`, `AUTH_SECRET` (see `.env.example`), then `npm run cf:preview`.
 
